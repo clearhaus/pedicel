@@ -9,7 +9,7 @@ This Ruby gem will help you handle an Apple Pay `PKPaymentToken`.
 
 Generate a private key:
 
-    openssl ecparam -out private.key -name prime256v1 –genkey
+    openssl ecparam -out private.key -name prime256v1 -genkey
 
 Generate a CSR (Certificate Signing Request):
 
