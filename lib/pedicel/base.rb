@@ -1,29 +1,12 @@
 require 'openssl'
+require 'base64'
 
 module Pedicel
   class Base
     SUPPORTED_VERSIONS = [:EC_v1]
 
     def initialize(token, now: Time.now)
-      @token = Pedicel.config[:json_parser].call(token)
-
-      validate(now: now)
-    end
-
-    def validate(now: Time.now)
-      validate_format
-      validate_content(now: now)
-    end
-
-    def validate_format
-      keys = ['data', 'header', 'signature', 'version']
-      missing = @token.values_at(keys).select{|k,v| v.nil?}.keys
-
-      # FIXME: ephemeralPublicKey is for EC, wrappedKey is for RSA; etc.
-      header_keys = ['applicationData', 'ephemeralPublicKey', 'wrappedKey', 'publicKeyHash', 'transactionId']
-      missing.concat(@token['header'].values_at(header_keys).select{|k,v| v.nil?}.keys.map{|k| "header.#{k}"})
-
-      raise TokenFormatError, 'Token missing keys: ' + missing.join(', ') unless missing.empty?
+      @token = token
     end
 
     def validate_content(now: Time.now)
@@ -36,6 +19,10 @@ module Pedicel
 
     def version
       @token['version']&.to_sym
+    end
+
+    def encrypted_data
+      Base64.decode64(@token['data'])
     end
 
     def signing_time_ok?(now: Time.now)
@@ -84,14 +71,6 @@ module Pedicel
 
         Aes256GcmDecrypt::decrypt(encrypted_data, key)
       end
-    end
-
-    def merchant_id(certificate)
-      [certificate.
-         extensions.
-         find { |e| e.oid == Pedicel.config[:oids][:merchant_identifier_field] }.
-         value # Hex encoded Merchant ID.
-      ].pack('H*')
     end
   end
 end

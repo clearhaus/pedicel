@@ -1,7 +1,6 @@
-require 'factory'
-require 'base'
-require 'ec'
-require 'rsa'
+require 'pedicel/base'
+require 'pedicel/ec'
+require 'pedicel/rsa'
 
 module Pedicel
   class Error < StandardError; end
@@ -19,7 +18,6 @@ module Pedicel
       merchant_identifier_field: '1.2.840.113635.100.6.32',
     },
     replay_threshold_seconds: 3*60,
-    json_parser: lambda{|string| require 'json'; JSON.parse(string)},
     apple_root_ca_g3_cert_pem: <<~PEM
       -----BEGIN CERTIFICATE-----
       MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS

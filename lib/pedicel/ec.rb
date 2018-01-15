@@ -3,22 +3,22 @@ require 'base'
 module Pedicel
   class EC < Base
     def ephemeral_public_key
-      @token['ephemeralPublicKey']
+      @token['header']['ephemeralPublicKey']
     end
 
     def decrypt(private_key: nil, symmetric_key: nil, certificate: nil, merchant_id: nil)
       raise ArgumentError 'invalid argument combination' unless \
-        (private_key ^ symmetric_key)  &&  (certificate ^ merchant_id)
-      #   .----------'---------------. || .-------------'-------------.
-      #   | symmetric_key can be     | || | merchant_id (byte string) |
-      #   | derived from private_key | || | can be derived from the   |
-      #   | and ephemeralPublicKey   | || | public certificate.       |
-      #   | via the shared_secret.   | || '---------------------------'
-      #   '--------------------------' ||
-      #         .----------------------''--------------------------.
-      #         | Both the shared_secret and PartyVInfo is needed; |
-      #         | merchant_id (byte string) is the PartyVInfo.     |
-      #         '--------------------------------------------------'
+        (!private_key.nil? ^ !symmetric_key.nil?)  &&  (!certificate.nil? ^ !merchant_id.nil?)
+      #         .----------'---------------.       ||       .-------------'-------------.
+      #         | symmetric_key can be     |       ||       | merchant_id (byte string) |
+      #         | derived from private_key |       ||       | can be derived from the   |
+      #         | and ephemeralPublicKey   |       ||       | public certificate.       |
+      #         | via the shared_secret.   |       ||       '---------------------------'
+      #         '--------------------------'       ||
+      #                     .----------------------''--------------------------.
+      #                     | Both the shared_secret and PartyVInfo is needed; |
+      #                     | merchant_id (byte string) is the PartyVInfo.     |
+      #                     '--------------------------------------------------'
 
       if private_key
         symmetric_key = symmetric_key(private_key: private_key,
@@ -31,16 +31,8 @@ module Pedicel
 
     def symmetric_key(private_key: nil, shared_secret: nil, certificate: nil, merchant_id: nil)
       raise ArgumentError 'invalid argument combination' unless \
-        (private_key ^ shared_secret)  &&  (certificate ^ merchant_id)
-      #   .----------'---------------. || .-------------'-------------.
-      #   | shared_secret can be     | || | merchant_id (byte string) |
-      #   | derived from private_key | || | can be derived from the   |
-      #   | and ephemeralPublicKey.  | || | public certificate.       |
-      #   '--------------------------' || '---------------------------'
-      #         .----------------------''--------------------------.
-      #         | Both the shared_secret and PartyVInfo is needed; |
-      #         | merchant_id (byte string) is the PartyVInfo.     |
-      #         '--------------------------------------------------'
+        (!private_key.nil? ^ !shared_secret.nil?)  &&  (!certificate.nil? ^ !merchant_id.nil?)
+      # See #decrypt.
 
       shared_secret = shared_secret(private_key: private_key) if private_key
       merchant_id = self.class.merchant_id(certificate: certificate) if certificate
@@ -58,22 +50,20 @@ module Pedicel
       #  * prime256v1 (OpenSSL)
       #  * secp256r1 (SECG)
       #  * nistp256 (NIST)
-      #
-      # FIXME: Where is the "algorithm spec"?
 
       begin
-        OpenSSL::PKey::EC.new(private_key)
+        sk = OpenSSL::PKey::EC.new(private_key)
       rescue => e
         raise KeyError, "Invalid PEM format of private key for EC: #{e.message}"
       end
 
       begin
-        OpenSSL::PKey::EC.new(Base64.decode64(ephemeral_public_key))
+        pk = OpenSSL::PKey::EC.new(Base64.decode64(ephemeral_public_key))
       rescue => e
         raise KeyError, "Invalid PEM format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
-      fail 'not implemented yet'
+      sk.dh_compute_key(OpenSSL::PKey::EC::Point.new(sk.group, pk.public_key.to_bn))
     end
 
     def self.symmetric_key(merchant_id:, shared_secret:)
@@ -121,15 +111,16 @@ module Pedicel
 
     def self.merchant_id(certificate:)
       begin
-        OpenSSL::X509::Certificate.new(certificate)
+        cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
         raise CertificateError, "Invalid PEM format of certificate: #{e.message}"
       end
 
-      [certificate.
+      [cert.
          extensions.
          find { |x| x.oid == Pedicel.config[:oids][:merchant_identifier_field] }.
-         value # Hex encoded Merchant ID.
+         value. # Hex encoded Merchant ID plus perhaps extra non-hex chars.
+         delete("^[0-9a-fA-F]") # Remove non-hex chars.
       ].pack('H*')
     end
 
