@@ -36,9 +36,10 @@ b. Sign the CSR from above and thereby get a certificate.
 First time:
 
     /usr/lib/ssl/misc/CA.pl -newca
-    [enter]
-    # Type "asdf" and [enter] for all the remaining questions (including
-    # passphrase) for convenience.
+    # Type [enter] to create.
+    # Choose a PEM pass phrase with minimum length 4.
+    # Type [enter] to the CSR fields, except the CN which must not be blank.
+    # Type the chosen pass phrase when asked for it.
 
 This generated the dir `demoCA`.
 
