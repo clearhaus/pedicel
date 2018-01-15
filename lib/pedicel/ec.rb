@@ -3,7 +3,7 @@ require 'base'
 module Pedicel
   class EC < Base
     def ephemeral_public_key
-      @token['header']['ephemeralPublicKey']
+      Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
     def decrypt(private_key: nil, symmetric_key: nil, certificate: nil, merchant_id: nil)
@@ -54,16 +54,18 @@ module Pedicel
       begin
         sk = OpenSSL::PKey::EC.new(private_key)
       rescue => e
-        raise KeyError, "Invalid PEM format of private key for EC: #{e.message}"
+        raise EcKeyError, "invalid PEM format of private key for EC: #{e.message}"
       end
+      raise EcKeyError, "wrong private_key curve '#{sk.group.curve_name}', should be 'prime256v1'" unless sk.group.curve_name == 'prime256v1'
 
       begin
-        pk = OpenSSL::PKey::EC.new(Base64.decode64(ephemeral_public_key))
+        pk = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
       rescue => e
-        raise KeyError, "Invalid PEM format of ephemeralPublicKey (from token) for EC: #{e.message}"
+        raise EcEphemeralPublicKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
+      raise EcEphemeralPublicKeyError, "wrong ephemeralPublicKey (from token) curve '#{pk.curve_name}', should be 'prime256v1'" unless pk.curve_name == 'prime256v1'
 
-      sk.dh_compute_key(OpenSSL::PKey::EC::Point.new(sk.group, pk.public_key.to_bn))
+      sk.dh_compute_key(OpenSSL::PKey::EC::Point.new(sk.group, pk.to_bn))
     end
 
     def self.symmetric_key(merchant_id:, shared_secret:)
