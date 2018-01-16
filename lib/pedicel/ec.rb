@@ -67,7 +67,7 @@ module Pedicel
       rescue => e
         raise EcEphemeralPublicKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
-      raise EcEphemeralPublicKeyError, "wrong ephemeralPublicKey (from token) curve '#{pk.curve_name}', should be 'prime256v1'" unless pk.curve_name == 'prime256v1'
+      raise EcEphemeralPublicKeyError, "wrong ephemeralPublicKey (from token) curve '#{pk.group.curve_name}', should be 'prime256v1'" unless pk.group.curve_name == 'prime256v1'
 
       sk.dh_compute_key(OpenSSL::PKey::EC::Point.new(sk.group, pk.to_bn))
     end
