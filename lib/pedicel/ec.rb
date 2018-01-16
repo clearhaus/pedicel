@@ -6,19 +6,17 @@ module Pedicel
       Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
-    def decrypt(private_key: nil, symmetric_key: nil, certificate: nil, merchant_id: nil)
+    def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil)
       raise ArgumentError 'invalid argument combination' unless \
-        (!private_key.nil? ^ !symmetric_key.nil?)  &&  (!certificate.nil? ^ !merchant_id.nil?)
-      #         .----------'---------------.       ||       .-------------'-------------.
-      #         | symmetric_key can be     |       ||       | merchant_id (byte string) |
-      #         | derived from private_key |       ||       | can be derived from the   |
-      #         | and ephemeralPublicKey   |       ||       | public certificate.       |
-      #         | via the shared_secret.   |       ||       '---------------------------'
-      #         '--------------------------'       ||
-      #                     .----------------------''--------------------------.
-      #                     | Both the shared_secret and PartyVInfo is needed; |
-      #                     | merchant_id (byte string) is the PartyVInfo.     |
-      #                     '--------------------------------------------------'
+        !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
+      # .-------------------'--------. .----------'----. .-------------''---.
+      # | symmetric_key can be       | | merchant_id   | | Both private_key |
+      # | derived from private_key   | | (byte string) | | and merchant_id  |
+      # | and the shared_secret---   | | can be        | | is necessary to  |
+      # | which can be derived from  | | derived from  | | derive the       |
+      # | the private_key and the    | | the public    | | symmetric key    |
+      # | token's ephemeralPublicKey | | certificate   | '------------------'
+      # '----------------------------' '---------------'
 
       if private_key
         symmetric_key = symmetric_key(private_key: private_key,
@@ -29,10 +27,16 @@ module Pedicel
       decrypt_aes(key: symmetric_key)
     end
 
-    def symmetric_key(private_key: nil, shared_secret: nil, certificate: nil, merchant_id: nil)
+    def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
       raise ArgumentError 'invalid argument combination' unless \
-        (!private_key.nil? ^ !shared_secret.nil?)  &&  (!certificate.nil? ^ !merchant_id.nil?)
-      # See #decrypt.
+        (!shared_secret.nil? ^ !private_key.nil?) && (!merchant_id.nil? ^ !certificate.nil?)
+      # .--------------------'.  .----------------'|  .-----------------'--.
+      # | shared_secret can   |  | shared_secret   |  | merchant_id (byte  |
+      # | be derived from the |  | and merchant_id |  | string can be      |
+      # | private_key and the |  | is necessary to |  | derived from the   |
+      # | ephemeralPublicKey  |  | derive the      |  | public certificate |
+      # '---------------------'  | symmetric_key   |  '--------------------'
+      #                          '-----------------'
 
       shared_secret = shared_secret(private_key: private_key) if private_key
       merchant_id = self.class.merchant_id(certificate: certificate) if certificate
