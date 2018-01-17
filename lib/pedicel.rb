@@ -9,7 +9,6 @@ module Pedicel
   class VersionError < Error; end
   class CertificateError < Error; end
   class EcKeyError < Error; end
-  class EcEphemeralPublicKeyError < Error; end
 
   DEFAULTS = {
     oids: {

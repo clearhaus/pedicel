@@ -47,29 +47,25 @@ module Pedicel
     # Extract the shared secret from one public key (the ephemeral) and one
     # private key.
     def shared_secret(private_key:)
-      # id-ecdh (OID 1.3.132.1.12, although it is somewhere confused with
-      # 1.3.132.1.112).
-      # https://tools.ietf.org/html/rfc5480#section-2.1.2
-      # Curve: X9.62/SECG over 256 bit prime field; named:
-      #  * prime256v1 (OpenSSL)
-      #  * secp256r1 (SECG)
-      #  * nistp256 (NIST)
-
       begin
-        sk = OpenSSL::PKey::EC.new(private_key)
+        privkey = OpenSSL::PKey::EC.new(private_key)
       rescue => e
         raise EcKeyError, "invalid PEM format of private key for EC: #{e.message}"
       end
-      raise EcKeyError, "wrong private_key curve '#{sk.group.curve_name}', should be 'prime256v1'" unless sk.group.curve_name == 'prime256v1'
 
       begin
-        pk = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
+        pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
       rescue => e
-        raise EcEphemeralPublicKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
+        raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
-      raise EcEphemeralPublicKeyError, "wrong ephemeralPublicKey (from token) curve '#{pk.group.curve_name}', should be 'prime256v1'" unless pk.group.curve_name == 'prime256v1'
 
-      sk.dh_compute_key(OpenSSL::PKey::EC::Point.new(sk.group, pk.to_bn))
+      unless privkey.group == pubkey.group
+        raise EcKeyError,
+          "private_key curve '#{privkey.group.curve_name}' differ from " \
+          "ephemeralPublicKey (from token) curve '#{pubkey.group.curve_name}'"
+      end
+
+      privkey.dh_compute_key(pubkey)
     end
 
     def self.symmetric_key(merchant_id:, shared_secret:)
