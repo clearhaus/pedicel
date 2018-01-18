@@ -133,6 +133,10 @@ module Pedicel
       # (ecdsa-with-SHA256 1.2.840.10045.4.3.2) of the concatenated values of
       # the ephemeralPublicKey, data, transactionId, and applicationData keys.
 
+      unless leaf.signature_algorithm == 'ecdsa-with-SHA256'
+        raise SignatureError, 'signature algorithm is not ecdsa-with-SHA256'
+      end
+
       message = [
         ephemeral_public_key,
         encrypted_data,
