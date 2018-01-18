@@ -97,15 +97,14 @@ module Pedicel
       sha256 = Digest::SHA256.new
 
       # Step 3:
-      sha256 << "\x00\x00\x00\x01".b
-      # FIXME: Can't we do without `#b` that encodes it ASCII-8BIT?
+      sha256 << "\x00\x00\x00\x01"
 
       # Z:
       sha256 << shared_secret
 
       # OtherInfo:
       # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
-      sha256 << "\x0d".b + 'id-aes256-GCM' # AlgorithmID
+      sha256 << "\x0d" + 'id-aes256-GCM' # AlgorithmID
       sha256 << 'Apple' # PartyUInfo
       sha256 << merchant_id # PartyVInfo
 
@@ -155,8 +154,6 @@ module Pedicel
       unless signature.verify(certificates, store, message, flags)
         raise SignatureError, 'signature does not match the message'
       end
-
-      true
     end
   end
 end
