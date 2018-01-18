@@ -105,14 +105,19 @@ module Pedicel
       # The value for these marker OIDs doesn't matter, only their presence.
       leaf, intermediate = self.class.verify_signature_certificate_oids(signature: s)
 
+      begin
+        root = OpenSSL::X509::Certificate.new(Pedicel.config[:apple_root_ca_g3_cert_pem])
+      rescue => e
+        raise CertificateError, "invalid root certificate: #{e.message}"
+      end
+
       # 1.b
       # Ensure that the root CA is the Apple Root CA - G3. (...)
-      #
-      # Superfluous due to 1.c.
+      self.class.verify_root_certificate(root: root, intermediate: intermediate)
 
       # 1.c
       # Ensure that there is a valid X.509 chain of trust from the signature to the root CA.
-      self.class.verify_x509_chain(leaf: leaf, intermediate: intermediate)
+      self.class.verify_x509_chain(root: root, intermediate: intermediate, leaf: leaf)
 
       # 1.d
       # Validate the token's signature.
@@ -139,13 +144,13 @@ module Pedicel
       [leaf, intermediate]
     end
 
-    def self.verify_x509_chain(leaf:, intermediate:)
-      begin
-        root = OpenSSL::X509::Certificate.new(Pedicel.config[:apple_root_ca_g3_cert_pem])
-      rescue => e
-        raise CertificateError, "invalid root certificate: #{e.message}"
+    def self.verify_root_certificate(root:, intermediate:)
+      unless intermediate.issuer == root.subject
+        raise SignatureError, 'root certificate has not issued intermediate certificate'
       end
+    end
 
+    def self.verify_x509_chain(root:, intermediate:, leaf:)
       valid_chain = OpenSSL::X509::Store.new.
                       add_cert(root).
                       add_cert(intermediate).
