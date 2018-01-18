@@ -6,7 +6,7 @@ module Pedicel
       Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
-    def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil)
+    def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil, now: Time.now)
       raise ArgumentError 'invalid argument combination' unless \
         !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
       # .-------------------'--------. .----------'----. .-------------''---.
@@ -24,6 +24,7 @@ module Pedicel
                                       merchant_id: merchant_id)
       end
 
+      verify_signature(now: now)
       decrypt_aes(key: symmetric_key)
     end
 
@@ -126,5 +127,36 @@ module Pedicel
       ].pack('H*')
     end
 
+    private
+
+    def validate_signature(signature:, leaf:)
+      # (...) ensure that the signature is a valid ECDSA signature
+      # (ecdsa-with-SHA256 1.2.840.10045.4.3.2) of the concatenated values of
+      # the ephemeralPublicKey, data, transactionId, and applicationData keys.
+
+      message = [
+        ephemeral_public_key,
+        encrypted_data,
+        transaction_id,
+        application_data,
+      ].compact.join
+
+      # https://wiki.openssl.org/index.php/Manual:PKCS7_verify(3)#VERIFY_PROCESS
+      flags = \
+        OpenSSL::PKCS7::NOCHAIN  | # Ignore certs in the message.
+        OpenSSL::PKCS7::NOINTERN | # Only look at the supplied certificate.
+        OpenSSL::PKCS7::NOVERIFY   # Do not verify the chain; already done.
+
+      # Trust exactly the leaf which has already been verified.
+      certificates = [leaf]
+
+      store = OpenSSL::X509::Store.new
+
+      unless signature.verify(certificates, store, message, flags)
+        raise SignatureError, 'signature does not match the message'
+      end
+
+      true
+    end
   end
 end
