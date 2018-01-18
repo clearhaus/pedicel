@@ -88,7 +88,7 @@ module Pedicel
     end
 
     def valid_signature?(now: Time.now)
-      validate_signature(now: now)
+      true if validate_signature(now: now)
     rescue
       false
     end
@@ -129,17 +129,21 @@ module Pedicel
       # Inspect the CMS signing time of the signature (...)
       self.class.verify_signed_time(signature: s, now: now)
 
-      true
+      self
     end
 
     private
 
     def self.verify_signature_certificate_oids(signature:)
       leaf = signature.certificates.find{|c| c.extensions.find{|e| e.oid == Pedicel.config[:oids][:leaf_certificate]}}
-      raise SignatureError, "no leaf certificate found (OID #{Pedicel.config[:oids][:leaf_certificate]})" unless leaf
+      unless leaf
+        raise SignatureError, "no leaf certificate found (OID #{Pedicel.config[:oids][:leaf_certificate]})"
+      end
 
       intermediate = signature.certificates.find{|c| c.extensions.find{|e| e.oid == Pedicel.config[:oids][:intermediate_certificate]}}
-      raise SignatureError, "no intermediate certificate found (OID #{Pedicel.config[:oids][:leaf_certificate]})" unless intermediate
+      unless intermediate
+        raise SignatureError, "no intermediate certificate found (OID #{Pedicel.config[:oids][:leaf_certificate]})"
+      end
 
       [leaf, intermediate]
     end
@@ -165,17 +169,21 @@ module Pedicel
       # by more than a few minutes, it's possible that the token is a replay
       # attack.
 
-      signers = signature.signers
-      unless signers.length == 1
+      unless signature.signers.length == 1
         raise SignatureError, 'not 1 signer, unable to determine signing time'
       end
-
-      diff = signers.first.signed_time - now
+      signed_time = signature.signers.first.signed_time
 
       few_min = Pedicel.config[:replay_threshold_seconds]
 
-      raise SignatureError, "signature too old; signed #{diff.abs.to_i}s ago" if diff < -few_min
-      raise SignatureError, "signature too new; signed #{diff.abs.to_i}s in the future" if diff > few_min
+      # Time objects. DST aware. Ignoring leap seconds.
+      return if signed_time.between?(now - few_min, now + few_min) # Both ends included.
+
+      diff = signed_time - now
+      if diff.negative?
+        raise SignatureError, "signature too old; signed #{-diff.to_i}s ago"
+      end
+      raise SignatureError, "signature too new; signed #{diff.to_i}s in the future"
     end
   end
 end
