@@ -56,9 +56,7 @@ This produced `newcert.pem`
 Grab `demoCA/cacert.pem`, or rather the certificate part of it and use it:
 
 ```ruby
-Pedicel.config = Pedicel.config.merge(apple_root_ca_g3_cert_pem: '
------BEGIN CERTIFICATE-----
-...
------END CERTIFICATE-----'
-)
+irb -I lib -I lib/pedicel -r pedicel
+cacert = File.read('demoCA/cacert.pem').sub(/.*\n(-+BEGIN CERTIFICATE)/m, '\1')
+Pedicel.config.merge!(apple_root_ca_g3_cert_pem: cacert)
 ```
