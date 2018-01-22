@@ -115,7 +115,7 @@ module Pedicel
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
-        raise CertificateError, "Invalid PEM format of certificate: #{e.message}"
+        raise CertificateError, "invalid PEM format of certificate: #{e.message}"
       end
 
       bytestrings = [
