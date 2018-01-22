@@ -96,7 +96,7 @@ module Pedicel
     def verify_signature(now: Time.now)
       begin
         s = OpenSSL::PKCS7.new(signature)
-      rescue
+      rescue => e
         raise SignatureError, "invalid PKCS #7 signature: #{e.message}"
       end
 
