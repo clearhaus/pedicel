@@ -118,12 +118,17 @@ module Pedicel
         raise CertificateError, "Invalid PEM format of certificate: #{e.message}"
       end
 
-      [cert.
-         extensions.
-         find { |x| x.oid == Pedicel.config[:oids][:merchant_identifier_field] }.
-         value. # Hex encoded Merchant ID plus perhaps extra non-hex chars.
-         delete("^[0-9a-fA-F]") # Remove non-hex chars.
-      ].pack('H*')
+      bytestrings = [
+        cert.
+          extensions.
+          find { |x| x.oid == Pedicel.config[:oids][:merchant_identifier_field] }&.
+          value&. # Hex encoded Merchant ID plus perhaps extra non-hex chars.
+          delete("^[0-9a-fA-F]") # Remove non-hex chars.
+      ].compact
+
+      raise CertificateError, 'no merchant identifier in certificate' if bytestrings.empty?
+
+      bytestrings.pack('H*')
     end
 
     private
