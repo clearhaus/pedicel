@@ -8,11 +8,6 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency 'dry-validation'
 
-  require 'openssl'
-  unless OpenSSL::Cipher.new('aes-256-gcm').respond_to?(:iv_len=)
-    s.add_runtime_dependency 'aes256gcm_decrypt', git: 'https://github.com/clearhaus/aes256gcm_decrypt'
-  end
-
   s.add_development_dependency 'rspec', '~> 3.7'
   s.add_development_dependency 'pry', '~> 0.11'
 end
