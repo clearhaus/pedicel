@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
 
   require 'openssl'
   unless OpenSSL::Cipher.new('aes-256-gcm').respond_to?(:iv_len=)
-    s.add_runtime_dependency 'aes256gcm_decrypt', git: 'https://github.com/clearhaus/aes256gcm_decrypt'
+    s.add_runtime_dependency 'aes256gcm_decrypt'
   end
 
   s.add_development_dependency 'rspec', '~> 3.7'
