@@ -232,11 +232,8 @@ module PedicelPay
         transaction_id,
         application_data,
       ].compact.join
-      $encrypted_data = encrypted_data
-      $message = message
 
-      s = OpenSSL::PKCS7.sign(@leaf_cert, @leaf_key, message, [@intermediate_cert, @ca_cert])
-      $s = s
+      s = OpenSSL::PKCS7.sign(@leaf_cert, @leaf_key, message, [@intermediate_cert, @ca_cert], OpenSSL::PKCS7::BINARY)
 
       Base64.strict_encode64(s.to_der)
     end
