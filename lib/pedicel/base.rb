@@ -22,6 +22,8 @@ module Pedicel
     end
 
     def encrypted_data
+      return nil unless @token['data']
+
       Base64.decode64(@token['data'])
     end
 
@@ -60,6 +62,8 @@ module Pedicel
     end
 
     def decrypt_aes(key:)
+      raise TokenFormatError, 'no encrypted data present' unless encrypted_data
+
       if OpenSSL::Cipher.new('aes-256-gcm').respond_to?(:iv_len=)
         # Either because you use Ruby >=2.4's native openssl lib, or if you have a
         # "recent enough" version of the openssl gem available.
