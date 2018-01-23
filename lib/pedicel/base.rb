@@ -28,6 +28,8 @@ module Pedicel
     end
 
     def signature
+      return nil unless @token['signature']
+
       Base64.decode64(@token['signature'])
     end
 
@@ -98,6 +100,8 @@ module Pedicel
     end
 
     def verify_signature(now: Time.now)
+      raise SignatureError, 'no signature present' unless signature
+
       begin
         s = OpenSSL::PKCS7.new(signature)
       rescue => e
