@@ -227,10 +227,9 @@ module PedicelPay
 
     def sign(ephemeral_public_key:, encrypted_data:, transaction_id:, application_data: nil)
       message = [
-        #ec_key_to_pkey_public_key(ephemeral_public_key).to_der,
-        'asdf',
+        ec_key_to_pkey_public_key(ephemeral_public_key).to_der,
         encrypted_data,
-        #transaction_id,
+        transaction_id,
         application_data,
       ].compact.join
       $encrypted_data = encrypted_data
