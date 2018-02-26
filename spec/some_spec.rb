@@ -24,7 +24,7 @@ describe 'basic test' do
 
   it 'works' do
     backend = PedicelPay::Backend.new
-    Pedicel.config = Pedicel.config.merge(apple_root_ca_g3_cert_pem: backend.ca_cert.to_pem)
+    Pedicel.config.merge!(apple_root_ca_g3_cert_pem: backend.ca_cert.to_pem)
     merchant = PedicelPay::Merchant.new
 
     merchant_certificate = backend.sign_csr(merchant.csr)
