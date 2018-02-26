@@ -1,4 +1,4 @@
-require 'base'
+require 'pedicel/base'
 
 module Pedicel
   class RSA < Base
