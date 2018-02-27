@@ -1,4 +1,4 @@
-require 'base'
+require 'pedicel/base'
 
 module Pedicel
   class EC < Base
@@ -6,7 +6,8 @@ module Pedicel
       Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
-    def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil, now: Time.now)
+    def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
+                ca_certificate_pem: Pedicel.config[:apple_root_ca_g3_cert_pem], now: Time.now)
       raise ArgumentError 'invalid argument combination' unless \
         !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
       # .-------------------'--------. .----------'----. .-------------''---.
@@ -24,7 +25,7 @@ module Pedicel
                                       merchant_id: merchant_id)
       end
 
-      verify_signature(now: now)
+      verify_signature(ca_certificate_pem: ca_certificate_pem, now: now)
       decrypt_aes(key: symmetric_key)
     end
 

@@ -99,7 +99,7 @@ module Pedicel
       false
     end
 
-    def verify_signature(now: Time.now)
+    def verify_signature(ca_certificate_pem: Pedicel.config[:apple_root_ca_g3_cert_pem], now: Time.now)
       raise SignatureError, 'no signature present' unless signature
 
       begin
@@ -114,7 +114,7 @@ module Pedicel
       leaf, intermediate = self.class.verify_signature_certificate_oids(signature: s)
 
       begin
-        root = OpenSSL::X509::Certificate.new(Pedicel.config[:apple_root_ca_g3_cert_pem])
+        root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
       rescue => e
         raise CertificateError, "invalid root certificate: #{e.message}"
       end
