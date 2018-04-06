@@ -7,7 +7,7 @@ module Pedicel
     end
 
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
-                ca_certificate_pem: Pedicel.config[:apple_root_ca_g3_cert_pem], now: Time.now)
+                ca_certificate_pem: @config[:apple_root_ca_g3_cert_pem], now: Time.now)
       raise ArgumentError 'invalid argument combination' unless \
         !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
       # .-------------------'--------. .----------'----. .-------------''---.
@@ -41,9 +41,11 @@ module Pedicel
       #                          '-----------------'
 
       shared_secret = shared_secret(private_key: private_key) if private_key
+
       merchant_id = self.class.merchant_id(certificate: certificate) if certificate
 
-      self.class.symmetric_key(shared_secret: shared_secret, merchant_id: merchant_id)
+      self.class.symmetric_key(shared_secret: shared_secret,
+                               merchant_id: merchant_id)
     end
 
     # Extract the shared secret from one public key (the ephemeral) and one
@@ -52,7 +54,8 @@ module Pedicel
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)
       rescue => e
-        raise EcKeyError, "invalid PEM format of private key for EC: #{e.message}"
+        raise EcKeyError,
+              "invalid PEM format of private key for EC: #{e.message}"
       end
 
       begin
@@ -112,7 +115,7 @@ module Pedicel
       sha256.digest
     end
 
-    def self.merchant_id(certificate:)
+    def self.merchant_id(certificate:, config: Pedicel.config)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
@@ -120,13 +123,14 @@ module Pedicel
       end
 
       merchant_id_hex =
-        cert.
-          extensions.
-          find { |x| x.oid == Pedicel.config[:oids][:merchant_identifier_field] }&.
-          value&. # Hex encoded Merchant ID plus perhaps extra non-hex chars.
-          delete("^[0-9a-fA-F]") # Remove non-hex chars.
+        cert
+        .extensions
+        .find { |x| x.oid == config[:oids][:merchant_identifier_field] }
+        &.value # Hex encoded Merchant ID plus perhaps extra non-hex chars.
+        &.delete('^[0-9a-fA-F]') # Remove non-hex chars.
 
-      raise CertificateError, 'no merchant identifier in certificate' unless merchant_id_hex
+      raise CertificateError, 'no merchant identifier in certificate' unless
+        merchant_id_hex
 
       [merchant_id_hex].pack('H*')
     end
@@ -146,7 +150,7 @@ module Pedicel
         ephemeral_public_key,
         encrypted_data,
         transaction_id,
-        application_data,
+        application_data
       ].compact.join
 
       # https://wiki.openssl.org/index.php/Manual:PKCS7_verify(3)#VERIFY_PROCESS

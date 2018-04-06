@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'pedicel/base'
 require 'pedicel/ec'
 require 'pedicel/rsa'
@@ -14,9 +16,9 @@ module Pedicel
     oids: {
       intermediate_certificate:  '1.2.840.113635.100.6.2.14',
       leaf_certificate:          '1.2.840.113635.100.6.29',
-      merchant_identifier_field: '1.2.840.113635.100.6.32',
+      merchant_identifier_field: '1.2.840.113635.100.6.32'
     },
-    replay_threshold_seconds: 3*60,
+    replay_threshold_seconds: 3 * 60,
     apple_root_ca_g3_cert_pem: <<~PEM
       -----BEGIN CERTIFICATE-----
       MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
@@ -37,10 +39,10 @@ module Pedicel
   }
 
   def self.config
-    @@config ||= DEFAULTS
+    @config ||= DEFAULTS
   end
 
   def self.config=(other)
-    @@config = other
+    @config = other
   end
 end
