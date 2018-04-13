@@ -7,7 +7,9 @@ require 'openssl'
 require 'json'
 require 'pry'
 
-describe 'decryption' do
+# rubocop:disable Metrics/BlockLength
+
+describe 'decryption' do # rubocop:disable Metrics/BlockLength
   let(:pedicel) { Pedicel.new }
 
   context 'with valid backend' do
@@ -57,7 +59,7 @@ describe 'decryption' do
       # Overwrite default CA in pedicel.
       Pedicel.config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
       p = Pedicel::EC.new(JSON.parse(token.to_json))
@@ -65,24 +67,22 @@ describe 'decryption' do
       decrypted =
         p.decrypt(
           merchant_id: merchant.merchant_id,
-          private_key: merchant.key,
-          certificate: merchant.certificate
+          private_key: merchant.key
         )
 
       expect(decrypted).to eq(data.to_json)
     end
 
     it 'validates with ephemeral assymetric encryption' do
-      pending
-      backend, merchant, token, data = PedicelPay::Helper.generate_all
+      backend, _merchant, token, _data = PedicelPay::Helper.generate_all
 
       # Overwrite default CA in pedicel.
-      Pedicel.config =
+      config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
-      p = Pedicel::EC.new(JSON.parse(token.to_json))
+      p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
       expect(p.validate_content).to be true
     end
@@ -103,8 +103,7 @@ describe 'decryption' do
       expect do
         p.decrypt(
           merchant_id: merchant.merchant_id,
-          private_key: merchant.key,
-          certificate: merchant.certificate
+          private_key: merchant.key
         )
       end.to raise_error(Pedicel::SignatureError)
     end
@@ -122,16 +121,18 @@ describe 'decryption' do
     backend.intermediate_certificate.sign(backend.intermediate_key,
                                           OpenSSL::Digest::SHA256.new)
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-
     # Overwrite default CA in pedicel.
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -147,16 +148,18 @@ describe 'decryption' do
     # Self-sign the leaf, as this is a "valid" signature.
     backend.leaf_certificate.sign(backend.leaf_key, OpenSSL::Digest::SHA256.new)
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-
     # Overwrite default CA in pedicel.
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -172,16 +175,18 @@ describe 'decryption' do
     backend.intermediate_certificate, backend.intermediate_key =
       PedicelPay::Backend.generate_ca
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-
     # Overwrite default CA in pedicel.
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -193,14 +198,18 @@ describe 'decryption' do
       )
     )
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    # Overwrite default CA in pedicel.
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -212,14 +221,18 @@ describe 'decryption' do
       )
     )
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    # Overwrite default CA in pedicel.
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -231,14 +244,18 @@ describe 'decryption' do
       )
     )
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    # Overwrite default CA in pedicel.
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -258,14 +275,18 @@ describe 'decryption' do
       fake_backend.leaf_key
     )
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    # Overwrite default CA in pedicel.
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -280,14 +301,18 @@ describe 'decryption' do
       )
     )
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    # Overwrite default CA in pedicel.
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
+
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
-        private_key: merchant.key,
-        certificate: merchant.certificate
+        private_key: merchant.key
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -296,16 +321,18 @@ describe 'decryption' do
     backend, merchant, token = PedicelPay::Helper.generate_all
 
     # Overwrite default CA in pedicel.
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
         private_key: merchant.key,
-        certificate: merchant.certificate,
-        now: Time.now + Pedicel.config[:replay_threshold_seconds] + 1
+        now: Time.now + config[:replay_threshold_seconds] + 1
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -314,16 +341,18 @@ describe 'decryption' do
     backend, merchant, token = PedicelPay::Helper.generate_all
 
     # Overwrite default CA in pedicel.
-    Pedicel.config[:apple_root_ca_g3_cert_pem] = backend.ca_certificate.to_pem
+    config =
+      Pedicel::DEFAULTS.merge(
+        trusted_ca_pem: backend.ca_certificate.to_pem
+      ).freeze
 
-    p = Pedicel::EC.new(JSON.parse(token.to_json))
+    p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
         private_key: merchant.key,
-        certificate: merchant.certificate,
-        now: Time.now - Pedicel.config[:replay_threshold_seconds] - 1
+        now: Time.now - config[:replay_threshold_seconds] - 1
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -340,12 +369,12 @@ describe 'pedicel' do
       backend, _, token = PedicelPay::Helper.generate_all
 
       # Overwrite default CA in pedicel.
-      Pedicel.config =
+      config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
-      p = Pedicel::EC.new(JSON.parse(token.to_json))
+      p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
       expect(p.valid_signature?).to be true
     end
@@ -364,12 +393,13 @@ describe 'pedicel' do
         fake_backend.leaf_key
       )
 
-      Pedicel.config =
+      # Overwrite default CA in pedicel.
+      config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
-      p = Pedicel::EC.new(JSON.parse(token.to_json))
+      p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
       expect(p.valid_signature?).to be false
     end
@@ -384,12 +414,13 @@ describe 'pedicel' do
         fake_backend.leaf_key
       )
 
-      Pedicel.config =
+      # Overwrite default CA in pedicel.
+      config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
-      p = Pedicel::EC.new(JSON.parse(token.to_json))
+      p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
       expect(p.valid_signature?).to be false
     end
@@ -412,14 +443,17 @@ describe 'pedicel' do
 
       token.header.transaction_id = trx_id
 
-      Pedicel.config =
+      # Overwrite default CA in pedicel.
+      config =
         Pedicel::DEFAULTS.merge(
-          apple_root_ca_g3_cert_pem: backend.ca_certificate.to_pem
+          trusted_ca_pem: backend.ca_certificate.to_pem
         ).freeze
 
-      p = Pedicel::EC.new(JSON.parse(token.to_json))
+      p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
       expect(p.valid_signature?).to be false
     end
   end
 end
+
+# rubocop:enable Metrics/BlockLength
