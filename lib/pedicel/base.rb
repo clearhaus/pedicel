@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'openssl'
 require 'base64'
 
@@ -16,7 +18,7 @@ module Pedicel
 
       raise SignatureError unless valid_signature?
 
-      raise ReplayAttackError, "token signature time indicates a replay attack (age #{now-cms_signing_time})" unless signing_time_ok?(now: now)
+      true
     end
 
     def version
@@ -43,19 +45,6 @@ module Pedicel
       return nil unless @token['applicationData']
 
       [@token['applicationData']].pack('H*')
-    end
-
-    def signing_time_ok?(now: Time.now)
-      # "Inspect the CMS signing time of the signature, as defined by section
-      # 11.3 of RFC 5652. If the time signature and the transaction time differ
-      # by more than a few minutes, it's possible that the token is a replay
-      # attack."
-      # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
-
-      delta = @config[:replay_threshold_seconds]
-
-      cms_signing_time.between?(now - delta, now + delta)
-      # Deliberately ignoring leap seconds.
     end
 
     def private_key_class
@@ -100,16 +89,16 @@ module Pedicel
 
     def valid_signature?(now: Time.now)
       true if verify_signature(now: now)
-    rescue
+    rescue StandardError => _
       false
     end
 
-    def verify_signature(ca_certificate_pem: @config[:apple_root_ca_g3_cert_pem], now: Time.now)
+    def verify_signature(ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
       raise SignatureError, 'no signature present' unless signature
 
       begin
         s = OpenSSL::PKCS7.new(signature)
-      rescue => e
+      rescue StandardError => e
         raise SignatureError, "invalid PKCS #7 signature: #{e.message}"
       end
 
@@ -186,6 +175,7 @@ module Pedicel
       # 11.3 of RFC 5652. If the time signature and the transaction time differ
       # by more than a few minutes, it's possible that the token is a replay
       # attack.
+      # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
 
       unless signature.signers.length == 1
         raise SignatureError, 'not 1 signer, unable to determine signing time'

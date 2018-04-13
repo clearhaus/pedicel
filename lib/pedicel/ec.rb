@@ -6,10 +6,15 @@ module Pedicel
       Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
+    # Decrypt self.encrypted_data() finding the key from either
+    # symmetric_key, og
+    #
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
-                ca_certificate_pem: @config[:apple_root_ca_g3_cert_pem], now: Time.now)
-      raise ArgumentError 'invalid argument combination' unless \
-        !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
+                ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
+      raise Pedicel::ArgumentError, 'invalid argument combination' unless \
+        !symmetric_key.nil? ^
+        ((!merchant_id.nil? ^ !certificate.nil?) && private_key)
+
       # .-------------------'--------. .----------'----. .-------------''---.
       # | symmetric_key can be       | | merchant_id   | | Both private_key |
       # | derived from private_key   | | (byte string) | | and merchant_id  |
@@ -19,10 +24,15 @@ module Pedicel
       # | token's ephemeralPublicKey | | certificate   | '------------------'
       # '----------------------------' '---------------'
 
-      if private_key
-        symmetric_key = symmetric_key(private_key: private_key,
-                                      certificate: certificate,
-                                      merchant_id: merchant_id)
+      if !certificate.nil? && merchant_id.nil?
+        merchant_id = self.class.merchant_id(certificate: certificate)
+      end
+
+      if private_key && merchant_id
+        symmetric_key = symmetric_key(
+          private_key: private_key,
+          merchant_id: merchant_id
+        )
       end
 
       verify_signature(ca_certificate_pem: ca_certificate_pem, now: now)
@@ -30,7 +40,7 @@ module Pedicel
     end
 
     def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
-      raise ArgumentError 'invalid argument combination' unless \
+      raise Pedicel::ArgumentError, 'invalid argument combination' unless \
         (!shared_secret.nil? ^ !private_key.nil?) && (!merchant_id.nil? ^ !certificate.nil?)
       # .--------------------'.  .----------------'|  .-----------------'--.
       # | shared_secret can   |  | shared_secret   |  | merchant_id (byte  |
@@ -53,21 +63,22 @@ module Pedicel
     def shared_secret(private_key:)
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)
-      rescue => e
+      rescue StandardError => e
         raise EcKeyError,
               "invalid PEM format of private key for EC: #{e.message}"
       end
 
       begin
         pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
-      rescue => e
-        raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
+      rescue StandardError => e
+        raise EcKeyError,
+              "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
       unless privkey.group == pubkey.group
         raise EcKeyError,
-          "private_key curve '#{privkey.group.curve_name}' differ from " \
-          "ephemeralPublicKey (from token) curve '#{pubkey.group.curve_name}'"
+              "private_key curve '#{privkey.group.curve_name}' differ from " \
+              "ephemeralPublicKey (from token) curve '#{pubkey.group.curve_name}'"
       end
 
       privkey.dh_compute_key(pubkey)
@@ -95,8 +106,8 @@ module Pedicel
       # >    hashlen` leftmost bits of `K(reps)`.
       # > 7. Return `K(1) || K(2) || ... || K(reps-1) || K_Last`.
       #
-      # Digest::SHA256 will do the calculations when we throw Z and OtherInfo into
-      # the digest.
+      # Digest::SHA256 will do the calculations when we throw Z and OtherInfo
+      # into the digest.
 
       sha256 = Digest::SHA256.new
 
@@ -118,8 +129,9 @@ module Pedicel
     def self.merchant_id(certificate:, config: Pedicel.config)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
-      rescue => e
-        raise CertificateError, "invalid PEM format of certificate: #{e.message}"
+      rescue StandardError => e
+        raise CertificateError,
+              "invalid PEM format of certificate: #{e.message}"
       end
 
       merchant_id_hex =
