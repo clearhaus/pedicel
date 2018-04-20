@@ -84,6 +84,7 @@ describe 'decryption' do # rubocop:disable Metrics/BlockLength
 
       p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
+      expect(p.signing_time_ok?(config: config)).to be true
       expect(p.validate_content).to be true
     end
   end
@@ -328,11 +329,14 @@ describe 'decryption' do # rubocop:disable Metrics/BlockLength
 
     p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
+    newnow = Time.now + config[:replay_threshold_seconds] + 1
+
+    expect(p.signing_time_ok?(now: newnow)).to be false
     expect do
       p.decrypt(
         merchant_id: merchant.merchant_id,
         private_key: merchant.key,
-        now: Time.now + config[:replay_threshold_seconds] + 1
+        now: newnow
       )
     end.to raise_error(Pedicel::SignatureError)
   end
@@ -376,6 +380,7 @@ describe 'pedicel' do
 
       p = Pedicel::EC.new(JSON.parse(token.to_json), config: config)
 
+      expect(p.signing_time_ok?).to be true
       expect(p.valid_signature?).to be true
     end
 
