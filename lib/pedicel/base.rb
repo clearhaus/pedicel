@@ -8,12 +8,12 @@ module Pedicel
   class Base # rubocop:disable Metrics/ClassLength
     SUPPORTED_VERSIONS = %i[EC_v1].freeze
 
-    def initialize(token, now: Time.now, config: Pedicel.config)
+    def initialize(token, config: Pedicel.config)
       @token  = token
       @config = config
     end
 
-    def validate_content(now: Time.now)
+    def validate_content
       raise VersionError, "unsupported version: #{version}" unless SUPPORTED_VERSIONS.include?(version)
 
       raise SignatureError unless valid_signature?
@@ -105,7 +105,8 @@ module Pedicel
       # 1.a
       # Ensure that the certificates contain the correct custom OIDs: (...).
       # The value for these marker OIDs doesn't matter, only their presence.
-      leaf, intermediate = self.class.verify_signature_certificate_oids(signature: s)
+      leaf, intermediate =
+        self.class.verify_signature_certificate_oids(signature: s)
 
       begin
         root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
@@ -118,8 +119,11 @@ module Pedicel
       self.class.verify_root_certificate(root: root, intermediate: intermediate)
 
       # 1.c
-      # Ensure that there is a valid X.509 chain of trust from the signature to the root CA.
-      self.class.verify_x509_chain(root: root, intermediate: intermediate, leaf: leaf)
+      # Ensure that there is a valid X.509 chain of trust from the signature to
+      # the root CA.
+      self.class.verify_x509_chain(root: root,
+                                   intermediate: intermediate,
+                                   leaf: leaf)
 
       # 1.d
       # Validate the token's signature.
@@ -147,7 +151,12 @@ module Pedicel
         raise SignatureError, "no leaf certificate found (OID #{config[:oids][:leaf_certificate]})"
       end
 
-      intermediate = signature.certificates.find{|c| c.extensions.find{|e| e.oid == config[:oids][:intermediate_certificate]}}
+      intermediate = signature.certificates.find do |c|
+        c.extensions.find do |e|
+          e.oid == config[:oids][:intermediate_certificate]
+        end
+      end
+
       unless intermediate
         raise SignatureError, "no intermediate certificate found (OID #{config[:oids][:leaf_certificate]})"
       end
@@ -157,15 +166,16 @@ module Pedicel
 
     def self.verify_root_certificate(root:, intermediate:)
       unless intermediate.issuer == root.subject
-        raise SignatureError, 'root certificate has not issued intermediate certificate'
+        raise SignatureError,
+              'root certificate has not issued intermediate certificate'
       end
     end
 
     def self.verify_x509_chain(root:, intermediate:, leaf:)
-      valid_chain = OpenSSL::X509::Store.new.
-                      add_cert(root).
-                      add_cert(intermediate).
-                      verify(leaf)
+      valid_chain = OpenSSL::X509::Store.new
+                                        .add_cert(root)
+                                        .add_cert(intermediate)
+                                        .verify(leaf)
 
       raise SignatureError, 'invalid chain of trust' unless valid_chain
     end
@@ -185,7 +195,8 @@ module Pedicel
       few_min = config[:replay_threshold_seconds]
 
       # Time objects. DST aware. Ignoring leap seconds.
-      return if signed_time.between?(now - few_min, now + few_min) # Both ends included.
+      # Both ends included.
+      return if signed_time.between?(now - few_min, now + few_min)
 
       diff = signed_time - now
       if diff.negative?

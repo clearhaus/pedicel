@@ -12,9 +12,7 @@ module Pedicel
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
       raise ArgumentError, 'invalid argument combination' unless \
-        !symmetric_key.nil? ^
-        ((!merchant_id.nil? ^ !certificate.nil?) && private_key)
-
+        !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && private_key)
       # .-------------------'--------. .----------'----. .-------------''---.
       # | symmetric_key can be       | | merchant_id   | | Both private_key |
       # | derived from private_key   | | (byte string) | | and merchant_id  |
@@ -127,8 +125,7 @@ module Pedicel
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
-        raise CertificateError,
-              "invalid PEM format of certificate: #{e.message}"
+        raise CertificateError, "invalid PEM format of certificate: #{e.message}"
       end
 
       merchant_id_hex =
