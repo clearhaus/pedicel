@@ -138,8 +138,6 @@ module Pedicel
       self
     end
 
-    private
-
     def self.verify_signature_certificate_oids(signature:, config: Pedicel.config)
       leaf = signature.certificates.find do |c|
         c.extensions.find do |e|
