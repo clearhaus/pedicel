@@ -35,10 +35,11 @@ module Pedicel
     oids: {
       intermediate_certificate:  '1.2.840.113635.100.6.2.14',
       leaf_certificate:          '1.2.840.113635.100.6.29',
-      merchant_identifier_field: '1.2.840.113635.100.6.32'
+      merchant_identifier_field: '1.2.840.113635.100.6.32',
     },
+
     replay_threshold_seconds: 3 * 60,
-    trusted_ca_pem: APPLE_ROOT_CA_G3_CERT_PEM
+    trusted_ca_pem: APPLE_ROOT_CA_G3_CERT_PEM,
   }
 
   def self.config

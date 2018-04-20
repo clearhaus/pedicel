@@ -296,7 +296,7 @@ describe 'decryption' do # rubocop:disable Metrics/BlockLength
       pp_config: PedicelPay.config.merge(
         oid: {
           leaf_certificate:          '1.2.840.113635.100.6.2.14',
-          intermediate_certificate:  '1.2.840.113635.100.6.29'
+          intermediate_certificate:  '1.2.840.113635.100.6.29',
         }
       )
     )

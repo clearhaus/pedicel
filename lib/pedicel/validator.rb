@@ -22,7 +22,7 @@ module Pedicel
       PKCS7Signature?: 'is not a PKCS7 Signature',
       ECI?: 'not an ECI indicator',
       hexsha256?: 'not hex-encoded SHA256',
-      base64sha256?: 'not base64-encoded SHA256'
+      base64sha256?: 'not base64-encoded SHA256',
     }.freeze
 
     # Custom predicates for validation.

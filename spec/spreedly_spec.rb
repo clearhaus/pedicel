@@ -129,7 +129,7 @@ describe "Spreedly's gala Ruby library's test case" do
       'paymentData'                     => {
         'onlinePaymentCryptogram' => 'Af9x/QwAA/DjmU65oyc1MAABAAA=',
         'eciIndicator'            => '5',
-      }
+      },
     }.to_json
   end
 

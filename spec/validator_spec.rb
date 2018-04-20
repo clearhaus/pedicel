@@ -19,7 +19,7 @@ module Pedicel
     def self.token_with_pan(pan)
       _, _, token = PedicelPay::Helper.generate_all(
         token_data: {
-          pan: pan
+          pan: pan,
         }
       )
       token

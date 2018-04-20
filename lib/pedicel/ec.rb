@@ -162,7 +162,7 @@ module Pedicel
         ephemeral_public_key,
         encrypted_data,
         transaction_id,
-        application_data
+        application_data,
       ].compact.join
 
       # https://wiki.openssl.org/index.php/Manual:PKCS7_verify(3)#VERIFY_PROCESS
