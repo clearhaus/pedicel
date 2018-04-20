@@ -38,7 +38,7 @@ module Pedicel
       end
 
       predicate(:hex?) do |value|
-        if Regexp.new(/\A[a-f0-9-]*\z/i).match(value).nil?
+        if Regexp.new(/\A[a-f0-9]*\z/i).match(value).nil?
           false
         else
           true
