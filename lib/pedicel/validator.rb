@@ -33,7 +33,7 @@ module Pedicel
 
       predicate(:base64?) do |value|
         !Base64.strict_decode64(value).nil?
-      rescue StandardError => _
+      rescue
         false
       end
 
@@ -61,7 +61,7 @@ module Pedicel
 
         begin
           Time.new(value[0..1], value[2..3], value[4..5]).is_a?(Time)
-        rescue StandardError => _
+        rescue
           false
         end
       end
@@ -70,7 +70,7 @@ module Pedicel
         decoded = Base64.decode64(value)
         begin
           OpenSSL::PKey::EC.new(decoded).check_key
-        rescue StandardError => _
+        rescue
           false
         end
       end
@@ -80,7 +80,7 @@ module Pedicel
         begin
           OpenSSL::PKCS7.new(decoded)
           true
-        rescue StandardError => _
+        rescue
           false
         end
       end
@@ -210,7 +210,7 @@ module Pedicel
 
     def self.valid_token?(token)
       validate_token(token)
-    rescue StandardError => _
+    rescue
       false
     end
 
@@ -226,7 +226,7 @@ module Pedicel
 
     def self.valid_token_data?(token_data)
       validate_token_data(token_data)
-    rescue StandardError => _
+    rescue
       false
     end
 

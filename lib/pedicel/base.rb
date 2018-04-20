@@ -89,7 +89,7 @@ module Pedicel
 
     def valid_signature?(now: Time.now)
       true if verify_signature(now: now)
-    rescue StandardError => _
+    rescue
       false
     end
 
@@ -98,7 +98,7 @@ module Pedicel
 
       begin
         s = OpenSSL::PKCS7.new(signature)
-      rescue StandardError => e
+      rescue e
         raise SignatureError, "invalid PKCS #7 signature: #{e.message}"
       end
 
@@ -109,7 +109,7 @@ module Pedicel
 
       begin
         root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
-      rescue => e
+      rescue e
         raise CertificateError, "invalid root certificate: #{e.message}"
       end
 

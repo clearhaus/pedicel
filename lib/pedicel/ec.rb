@@ -63,16 +63,14 @@ module Pedicel
     def shared_secret(private_key:)
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)
-      rescue StandardError => e
-        raise EcKeyError,
-              "invalid PEM format of private key for EC: #{e.message}"
+      rescue e
+        raise EcKeyError, "invalid PEM format of private key for EC: #{e.message}"
       end
 
       begin
         pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
-      rescue StandardError => e
-        raise EcKeyError,
-              "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
+      rescue e
+        raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
       unless privkey.group == pubkey.group
@@ -129,7 +127,7 @@ module Pedicel
     def self.merchant_id(certificate:, config: Pedicel.config)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
-      rescue StandardError => e
+      rescue e
         raise CertificateError,
               "invalid PEM format of certificate: #{e.message}"
       end
