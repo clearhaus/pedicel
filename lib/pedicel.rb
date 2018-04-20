@@ -40,7 +40,7 @@ module Pedicel
 
     replay_threshold_seconds: 3 * 60,
     trusted_ca_pem: APPLE_ROOT_CA_G3_CERT_PEM,
-  }
+  }.freeze
 
   def self.config
     @config ||= DEFAULTS
