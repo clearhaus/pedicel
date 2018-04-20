@@ -6,7 +6,7 @@ require 'base64'
 module Pedicel
   #
   class Base # rubocop:disable Metrics/ClassLength
-    SUPPORTED_VERSIONS = %w[EC_v1].freeze
+    SUPPORTED_VERSIONS = %i[EC_v1].freeze
 
     def initialize(token, now: Time.now, config: Pedicel.config)
       @token  = token
@@ -98,7 +98,7 @@ module Pedicel
 
       begin
         s = OpenSSL::PKCS7.new(signature)
-      rescue e
+      rescue => e
         raise SignatureError, "invalid PKCS #7 signature: #{e.message}"
       end
 
@@ -109,7 +109,7 @@ module Pedicel
 
       begin
         root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
-      rescue e
+      rescue => e
         raise CertificateError, "invalid root certificate: #{e.message}"
       end
 

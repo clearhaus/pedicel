@@ -40,7 +40,7 @@ module Pedicel
     end
 
     def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
-      raise Pedicel::ArgumentError, 'invalid argument combination' unless \
+      raise ArgumentError, 'invalid argument combination' unless \
         (!shared_secret.nil? ^ !private_key.nil?) && (!merchant_id.nil? ^ !certificate.nil?)
       # .--------------------'.  .----------------'|  .-----------------'--.
       # | shared_secret can   |  | shared_secret   |  | merchant_id (byte  |
@@ -63,20 +63,19 @@ module Pedicel
     def shared_secret(private_key:)
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)
-      rescue e
+      rescue => e
         raise EcKeyError, "invalid PEM format of private key for EC: #{e.message}"
       end
 
       begin
         pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
-      rescue e
+      rescue => e
         raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
       unless privkey.group == pubkey.group
-        raise EcKeyError,
-              "private_key curve '#{privkey.group.curve_name}' differ from " \
-              "ephemeralPublicKey (from token) curve '#{pubkey.group.curve_name}'"
+        raise EcKeyError, "private_key curve '%s' differs from token ephemeralPublicKey curve '%s'" %
+                          [privkey.group.curve_name, pubkey.group.curve_name]
       end
 
       privkey.dh_compute_key(pubkey)
@@ -127,7 +126,7 @@ module Pedicel
     def self.merchant_id(certificate:, config: Pedicel.config)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
-      rescue e
+      rescue => e
         raise CertificateError,
               "invalid PEM format of certificate: #{e.message}"
       end
