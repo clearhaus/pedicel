@@ -150,9 +150,9 @@ module Pedicel
     end
 
     def self.verify_signature_certificate_oids(signature:, config: Pedicel.config)
-      leaf = signature.certificates.find do |c|
-        c.extensions.find do |e|
-          e.oid == config[:oids][:leaf_certificate]
+      leaf = signature.certificates.find do |certificate|
+        certificate.extensions.find do |extension|
+          extension.oid == config[:oids][:leaf_certificate]
         end
       end
 
@@ -160,9 +160,9 @@ module Pedicel
         raise SignatureError, "no leaf certificate found (OID #{config[:oids][:leaf_certificate]})"
       end
 
-      intermediate = signature.certificates.find do |c|
-        c.extensions.find do |e|
-          e.oid == config[:oids][:intermediate_certificate]
+      intermediate = signature.certificates.find do |certificate|
+        certificate.extensions.find do |extension|
+          extension.oid == config[:oids][:intermediate_certificate]
         end
       end
 
