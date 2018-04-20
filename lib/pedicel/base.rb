@@ -4,8 +4,9 @@ require 'openssl'
 require 'base64'
 
 module Pedicel
-  class Base
-    SUPPORTED_VERSIONS = ['EC_v1']
+  #
+  class Base # rubocop:disable Metrics/ClassLength
+    SUPPORTED_VERSIONS = %w[EC_v1].freeze
 
     def initialize(token, now: Time.now, config: Pedicel.config)
       @token  = token
@@ -13,8 +14,7 @@ module Pedicel
     end
 
     def validate_content(now: Time.now)
-      raise VersionError, "unsupported version: #{version}" unless
-        SUPPORTED_VERSIONS.include?(@token['version'])
+      raise VersionError, "unsupported version: #{version}" unless SUPPORTED_VERSIONS.include?(version)
 
       raise SignatureError unless valid_signature?
 
