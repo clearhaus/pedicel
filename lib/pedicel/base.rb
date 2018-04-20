@@ -175,8 +175,7 @@ module Pedicel
 
     def self.verify_root_certificate(root:, intermediate:)
       unless intermediate.issuer == root.subject
-        raise SignatureError,
-              'root certificate has not issued intermediate certificate'
+        raise SignatureError, 'root certificate has not issued intermediate certificate'
       end
     end
 
