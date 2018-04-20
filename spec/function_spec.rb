@@ -96,7 +96,7 @@ describe 'Pedicel::EC decrypt function' do
           certificate: certificate,
           private_key: private_key
         )
-      end.to raise_error(Pedicel::ArgumentError)
+      end.to raise_error(ArgumentError)
 
       expect do
         p.decrypt(
@@ -104,7 +104,7 @@ describe 'Pedicel::EC decrypt function' do
           private_key: private_key,
           symmetric_key: symmetric_key
         )
-      end.to raise_error(Pedicel::ArgumentError)
+      end.to raise_error(ArgumentError)
 
       expect do
         p.decrypt(
@@ -112,7 +112,7 @@ describe 'Pedicel::EC decrypt function' do
           private_key: private_key,
           symmetric_key: symmetric_key
         )
-      end.to raise_error(Pedicel::ArgumentError)
+      end.to raise_error(ArgumentError)
 
       # Currently you can actually use all arguments
       # Changing this seems folly, as it is not really important.

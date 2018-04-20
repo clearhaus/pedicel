@@ -11,7 +11,7 @@ module Pedicel
     #
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
-      raise Pedicel::ArgumentError, 'invalid argument combination' unless \
+      raise ArgumentError, 'invalid argument combination' unless \
         !symmetric_key.nil? ^
         ((!merchant_id.nil? ^ !certificate.nil?) && private_key)
 
