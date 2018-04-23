@@ -16,42 +16,36 @@ module Pedicel
         raise ArgumentError 'missing parameters'
       end
 
-      # Check for uniqueness among the supplied parameters:
+      # Check for uniqueness among the supplied parameters used directly here:
       if symmetric_key && (merchant_id || certificate || private_key)
-        raise ArgumentError "'symmetric_key' is enough to decrypt"
-      elsif merchant_id && certificate
-        raise ArgumentError "'certificate' should be left out when 'merchant_id' is supplied"
-      end
-
-      if !certificate.nil? && merchant_id.nil?
-        merchant_id = self.class.merchant_id(certificate: certificate)
-      end
-
-      if private_key && merchant_id
-        symmetric_key = symmetric_key(
-          private_key: private_key,
-          merchant_id: merchant_id
-        )
+        raise ArgumentError "leave out other parameters when supplying 'symmetric_key'"
       end
 
       verify_signature(ca_certificate_pem: ca_certificate_pem, now: now)
+
+      symmetric_key ||= symmetric_key(private_key: private_key,
+                                      merchant_id: merchant_id,
+                                      certificate: certificate)
+
       decrypt_aes(key: symmetric_key)
     end
 
     def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
-      raise ArgumentError, 'invalid argument combination' unless \
-        (!shared_secret.nil? ^ !private_key.nil?) && (!merchant_id.nil? ^ !certificate.nil?)
-      # .--------------------'.  .----------------'|  .-----------------'--.
-      # | shared_secret can   |  | shared_secret   |  | merchant_id (byte  |
-      # | be derived from the |  | and merchant_id |  | string can be      |
-      # | private_key and the |  | is necessary to |  | derived from the   |
-      # | ephemeralPublicKey  |  | derive the      |  | public certificate |
-      # '---------------------'  | symmetric_key   |  '--------------------'
-      #                          '-----------------'
+      # Check for necessary parameters:
+      unless (shared_secret || private_key) && (merchant_id || certificate)
+        raise ArgumentError 'missing parameters'
+      end
 
-      shared_secret = shared_secret(private_key: private_key) if private_key
+      # Check for uniqueness among the supplied parameters:
+      if shared_secret && private_key
+        raise ArgumentError, "leave out 'private_key' when supplying 'shared_secret'"
+      elsif merchant_id && certificate
+        raise ArgumentError, "leave out 'certificate' when supplying 'merchant_id'"
+      end
 
-      merchant_id = self.class.merchant_id(certificate: certificate) if certificate
+      shared_secret ||= shared_secret(private_key: private_key)
+
+      merchant_id ||= self.class.merchant_id(certificate: certificate)
 
       self.class.symmetric_key(shared_secret: shared_secret,
                                merchant_id: merchant_id)
