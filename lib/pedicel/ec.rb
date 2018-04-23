@@ -11,16 +11,17 @@ module Pedicel
     #
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
-      raise ArgumentError, 'invalid argument combination' unless \
-        !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && private_key)
-      # .-------------------'--------. .----------'----. .-------------''---.
-      # | symmetric_key can be       | | merchant_id   | | Both private_key |
-      # | derived from private_key   | | (byte string) | | and merchant_id  |
-      # | and the shared_secret---   | | can be        | | is necessary to  |
-      # | which can be derived from  | | derived from  | | derive the       |
-      # | the private_key and the    | | the public    | | symmetric key    |
-      # | token's ephemeralPublicKey | | certificate   | '------------------'
-      # '----------------------------' '---------------'
+      # Check for necessary parameters:
+      unless symmetric_key || ((merchant_id || certificate) && private_key)
+        raise ArgumentError 'missing parameters'
+      end
+
+      # Check for uniqueness among the supplied parameters:
+      if symmetric_key && (merchant_id || certificate || private_key)
+        raise ArgumentError "'symmetric_key' is enough to decrypt"
+      elsif merchant_id && certificate
+        raise ArgumentError "'certificate' should be left out when 'merchant_id' is supplied"
+      end
 
       if !certificate.nil? && merchant_id.nil?
         merchant_id = self.class.merchant_id(certificate: certificate)
