@@ -167,27 +167,26 @@ module Pedicel
     end
 
     def self.verify_signature_certificate_oids(signature:, config: Pedicel.config)
-      leaf = signature.certificates.find do |certificate|
-        certificate.extensions.find do |extension|
-          extension.oid == config[:oids][:leaf_certificate]
+      leafs, intermediates = [], []
+
+      signature.certificates.each do |certificate|
+        certificate.extensions.each do |extension|
+          case extension.oid
+          when config[:oids][:leaf_certificate]         then leafs << certificate
+          when config[:oids][:intermediate_certificate] then intermediates << certificate
+          end
         end
       end
 
-      unless leaf
-        raise SignatureError, "no leaf certificate found (OID #{config[:oids][:leaf_certificate]})"
+      unless leafs.length == 1
+        raise SignatureError, "no unique leaf certificate found (OID #{config[:oids][:leaf_certificate]})"
       end
 
-      intermediate = signature.certificates.find do |certificate|
-        certificate.extensions.find do |extension|
-          extension.oid == config[:oids][:intermediate_certificate]
-        end
+      unless intermediates.length == 1
+        raise SignatureError, "no unique intermediate certificate found (OID #{config[:oids][:leaf_certificate]})"
       end
 
-      unless intermediate
-        raise SignatureError, "no intermediate certificate found (OID #{config[:oids][:leaf_certificate]})"
-      end
-
-      [leaf, intermediate]
+      [leafs.first, intermediates.first]
     end
 
     def self.verify_root_certificate(root:, intermediate:)
