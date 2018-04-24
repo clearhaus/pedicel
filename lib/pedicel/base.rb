@@ -136,8 +136,7 @@ module Pedicel
       # 1.a
       # Ensure that the certificates contain the correct custom OIDs: (...).
       # The value for these marker OIDs doesn't matter, only their presence.
-      leaf, intermediate =
-        self.class.verify_signature_certificate_oids(signature: s)
+      leaf, intermediate = self.class.verify_signature_certificate_oids(signature: s)
 
       begin
         root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
@@ -152,9 +151,7 @@ module Pedicel
       # 1.c
       # Ensure that there is a valid X.509 chain of trust from the signature to
       # the root CA.
-      self.class.verify_x509_chain(root: root,
-                                   intermediate: intermediate,
-                                   leaf: leaf)
+      self.class.verify_x509_chain(root: root, intermediate: intermediate, leaf: leaf)
 
       # 1.d
       # Validate the token's signature.
