@@ -13,12 +13,12 @@ module Pedicel
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
       # Check for necessary parameters:
       unless symmetric_key || ((merchant_id || certificate) && private_key)
-        raise ArgumentError 'missing parameters'
+        raise ArgumentError, 'missing parameters'
       end
 
       # Check for uniqueness among the supplied parameters used directly here:
       if symmetric_key && (merchant_id || certificate || private_key)
-        raise ArgumentError "leave out other parameters when supplying 'symmetric_key'"
+        raise ArgumentError, "leave out other parameters when supplying 'symmetric_key'"
       end
 
       verify_signature(ca_certificate_pem: ca_certificate_pem, now: now)
@@ -33,7 +33,7 @@ module Pedicel
     def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
       # Check for necessary parameters:
       unless (shared_secret || private_key) && (merchant_id || certificate)
-        raise ArgumentError 'missing parameters'
+        raise ArgumentError, 'missing parameters'
       end
 
       # Check for uniqueness among the supplied parameters:
