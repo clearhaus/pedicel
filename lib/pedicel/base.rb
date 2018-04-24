@@ -4,7 +4,6 @@ require 'openssl'
 require 'base64'
 
 module Pedicel
-  #
   class Base # rubocop:disable Metrics/ClassLength
     SUPPORTED_VERSIONS = %i[EC_v1].freeze
 
@@ -61,31 +60,48 @@ module Pedicel
       if OpenSSL::Cipher.new('aes-256-gcm').respond_to?(:iv_len=)
         # Either because you use Ruby >=2.4's native openssl lib, or if you have
         # a "recent enough" version of the openssl gem available.
-
-        cipher = OpenSSL::Cipher.new(symmetric_algorithm)
-        cipher.decrypt
-
-        cipher.key = key
-
-        # iv_len must be set before the IV because default is 12 and
-        # only IVs of length `iv_len` will be accepted.
-        cipher.iv_len = 16
-        cipher.iv = 0.chr * cipher.iv_len
-
-        split_position = encrypted_data.length - cipher.iv_len
-        tag = encrypted_data.slice(split_position, cipher.iv_len)
-        untagged_encrypted_data = encrypted_data.slice(0, split_position)
-
-        cipher.auth_tag = tag
-        cipher.auth_data = ''.b
-
-        cipher.update(untagged_encrypted_data) << cipher.final
+        decrypt_aes_openssl(key)
       else
-        require 'aes256gcm_decrypt'
-
-        Aes256GcmDecrypt.decrypt(encrypted_data, key)
+        decrypt_aes_gem(key)
       end
     end
+
+    private
+    def decrypt_aes_openssl(key)
+      cipher = OpenSSL::Cipher.new(symmetric_algorithm)
+      cipher.decrypt
+
+      begin
+        cipher.key = key
+      rescue ArgumentError => e
+        raise Pedicel::AesKeyError, "invalid key: #{e.message}"
+      end
+
+      # iv_len must be set before the IV because default is 12 and
+      # only IVs of length `iv_len` will be accepted.
+      cipher.iv_len = 16
+      cipher.iv = 0.chr * cipher.iv_len
+
+      split_position = encrypted_data.length - cipher.iv_len
+      tag = encrypted_data.slice(split_position, cipher.iv_len)
+      untagged_encrypted_data = encrypted_data.slice(0, split_position)
+
+      cipher.auth_tag = tag
+      cipher.auth_data = ''.b
+
+      cipher.update(untagged_encrypted_data) << cipher.final
+    rescue OpenSSL::Cipher::CipherError
+      raise Pedicel::AesKeyError, 'wrong key'
+    end
+
+    def decrypt_aes_gem(key)
+      require 'aes256gcm_decrypt'
+
+      Aes256GcmDecrypt.decrypt(encrypted_data, key)
+    rescue Aes256GcmDecrypt::Error => e
+      raise Pedicel::AesKeyError, "decryption failed: #{e}"
+    end
+    public
 
     def valid_signature?(now: Time.now)
       true if verify_signature(now: now)

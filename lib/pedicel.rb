@@ -29,6 +29,7 @@ module Pedicel
   class VersionError < Error; end
   class CertificateError < Error; end
   class EcKeyError < Error; end
+  class AesKeyError < Error; end
 
   DEFAULTS = {
     oids: {
