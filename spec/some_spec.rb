@@ -24,6 +24,7 @@ describe 'basic test' do
 
   it 'works' do
     backend = PedicelPay::Backend.new
+    apple_root = Pedicel.config[:apple_root_ca_g3_cert_pem]
     Pedicel.config.merge!(apple_root_ca_g3_cert_pem: backend.ca_cert.to_pem)
     merchant = PedicelPay::Merchant.new
 
@@ -49,5 +50,6 @@ describe 'basic test' do
     p = Pedicel::EC.new(JSON.parse(token.to_json))
 
     expect(p.decrypt(private_key: merchant.key, certificate: merchant_certificate)).to eq(data.json)
+    Pedicel.config.merge!(apple_root_ca_g3_cert_pem: apple_root)
   end
 end
