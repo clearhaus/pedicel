@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'pedicel/base'
 require 'pedicel/ec'
 require 'pedicel/rsa'
@@ -22,6 +20,7 @@ module Pedicel
     6BgD56KyKA==
     -----END CERTIFICATE-----
   PEM
+  APPLE_ROOT_CA_G3_CERT_PEM.freeze
 
   class Error < StandardError; end
   class TokenFormatError < Error; end
@@ -43,7 +42,7 @@ module Pedicel
   }.freeze
 
   def self.config
-    @config ||= DEFAULTS
+    @config ||= DEFAULTS.dup
   end
 
   def self.config=(other)
