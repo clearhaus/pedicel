@@ -47,10 +47,14 @@ module Pedicel
     end
 
     def private_key_class
+      raise VersionError, "unsupported version: #{version}" unless SUPPORTED_VERSIONS.include?(version)
+
       { EC_v1: OpenSSL::PKey::EC, RSA_v1: OpenSSL::PKey::RSA }[version]
     end
 
     def symmetric_algorithm
+      raise VersionError, "unsupported version: #{version}" unless SUPPORTED_VERSIONS.include?(version)
+
       { EC_v1: 'aes-256-gcm', RSA_v1: 'aes-128-gcm' }[version]
     end
 
