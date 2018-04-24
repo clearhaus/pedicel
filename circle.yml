@@ -1,7 +1,7 @@
 ---
 machine:
     environment:
-        RUBY_VERSIONS: 2.3.3,2.4.3,2.5.1
+        RUBY_VERSIONS: 2.4.3,2.5.1
 
 dependencies:
     override:
