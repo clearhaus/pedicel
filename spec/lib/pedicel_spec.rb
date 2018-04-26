@@ -14,4 +14,12 @@ describe 'Pedicel config' do
     Pedicel.config[:oids][:leaf_certificate] = 'foobar'
     expect(Pedicel::DEFAULTS[:oids][:leaf_certificate]).to eq(x)
   end
+
+  describe 'Pedicel#reset_config' do
+    it 'resets the config' do
+      Pedicel.config[:oids][:leaf_certificate] = 'foobar'
+      Pedicel.reset_config
+      expect(Pedicel.config).to eq(Pedicel::DEFAULTS)
+    end
+  end
 end

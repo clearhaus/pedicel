@@ -47,4 +47,8 @@ module Pedicel
   def self.config=(other)
     @config = other
   end
+
+  def self.reset_config
+    @config = nil
+  end
 end
