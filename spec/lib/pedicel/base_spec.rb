@@ -15,8 +15,8 @@ describe 'Pedicel::Base' do
       'signature'      => Base64.encode64(signature),
       'header' => {
         'transactionId' => transaction_id.unpack('H*').first,
+        'applicationData' => application_data.unpack('H*').first,
       },
-      'applicationData' => application_data.unpack('H*').first,
     }
   end
 
