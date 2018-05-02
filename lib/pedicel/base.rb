@@ -41,9 +41,9 @@ module Pedicel
     end
 
     def application_data
-      return nil unless @token['applicationData']
+      return nil unless @token['header']['applicationData']
 
-      [@token['applicationData']].pack('H*')
+      [@token['header']['applicationData']].pack('H*')
     end
 
     def private_key_class
