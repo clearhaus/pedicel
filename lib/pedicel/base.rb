@@ -247,9 +247,8 @@ module Pedicel
 
       few_min = config[:replay_threshold_seconds]
 
-      # Time objects. DST aware. Ignoring leap seconds.
-      # Both ends included.
-      return if signed_time.between?(now - few_min, now + few_min)
+      # Time objects. DST aware. Ignoring leap seconds. Both ends included.
+      return true if signed_time.between?(now - few_min, now + few_min)
 
       diff = signed_time - now
       if diff.negative?
