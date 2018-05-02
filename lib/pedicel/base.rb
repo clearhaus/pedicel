@@ -133,15 +133,10 @@ module Pedicel
         raise SignatureError, "invalid PKCS #7 signature: #{e.message}"
       end
 
-      # 1.a
-      # Ensure that the certificates contain the correct custom OIDs: (...).
-      # The value for these marker OIDs doesn't matter, only their presence.
-      leaf, intermediate = self.class.verify_signature_certificate_oids(signature: s)
-
       begin
-        root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
+        trusted_root = OpenSSL::X509::Certificate.new(ca_certificate_pem)
       rescue => e
-        raise CertificateError, "invalid root certificate: #{e.message}"
+        raise CertificateError, "invalid trusted root certificate: #{e.message}"
       end
 
       # 1.a
@@ -152,7 +147,7 @@ module Pedicel
 
       # 1.b
       # Ensure that the root CA is the Apple Root CA - G3. (...)
-      self.class.verify_root_certificate(root: root, intermediate: intermediate)
+      self.class.verify_root_certificate(trusted_root: trusted_root, root: root)
 
       # 1.c
       # Ensure that there is a valid X.509 chain of trust from the signature to
@@ -200,10 +195,10 @@ module Pedicel
       [leafs.first, intermediates.first, roots.first]
     end
 
-    def self.verify_root_certificate(root:, intermediate:)
-      unless intermediate.issuer == root.subject
-        raise SignatureError, 'root certificate has not issued intermediate certificate'
-      end
+    def self.verify_root_certificate(root:, trusted_root:)
+      raise SignatureError, 'root certificate is not trusted' unless root == trusted_root
+
+      true
     end
 
     def self.verify_x509_chain(root:, intermediate:, leaf:)
