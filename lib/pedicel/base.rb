@@ -252,9 +252,9 @@ module Pedicel
 
       diff = signed_time - now
       if diff.negative?
-        raise SignatureError, "signature too old; signed #{-diff.to_i}s ago"
+        raise SignatureError, "signature too old; signed #{-diff}s ago"
       end
-      raise SignatureError, "signature too new; signed #{diff.to_i}s in the future"
+      raise SignatureError, "signature too new; signed #{diff}s in the future"
     end
   end
 end
