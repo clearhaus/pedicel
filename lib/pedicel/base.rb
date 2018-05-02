@@ -153,6 +153,8 @@ module Pedicel
       # Ensure that there is a valid X.509 chain of trust from the signature to
       # the root CA.
       self.class.verify_x509_chain(root: root, intermediate: intermediate, leaf: leaf)
+      # We "only" check the *certificate* chain (from leaf to root). Below (in
+      # 1.d) is checked that the signature is created with the leaf.
 
       # 1.d
       # Validate the token's signature.
@@ -202,12 +204,33 @@ module Pedicel
     end
 
     def self.verify_x509_chain(root:, intermediate:, leaf:)
-      valid_chain = OpenSSL::X509::Store.new
-                                        .add_cert(root)
-                                        .add_cert(intermediate)
-                                        .verify(leaf)
+      store = OpenSSL::X509::Store.new.add_cert(root)
 
-      raise SignatureError, 'invalid chain of trust' unless valid_chain
+      unless store.verify(root)
+        raise SignatureError, "invalid chain due to root: #{store.error_string}"
+      end
+
+      unless store.verify(intermediate)
+        raise SignatureError, "invalid chain due to intermediate: #{store.error_string}"
+      end
+
+      begin
+        store.add_cert(intermediate)
+      rescue OpenSSL::X509::StoreError
+        raise SignatureError, "invalid chain due to intermediate"
+      end
+
+      begin
+        store.add_cert(leaf)
+      rescue OpenSSL::X509::StoreError
+        raise SignatureError, "invalid chain due to leaf"
+      end
+
+      unless store.verify(leaf)
+        raise SignatureError, "invalid chain due to leaf: #{store.error_string}"
+      end
+
+      true
     end
 
     def self.verify_signed_time(signature:, now:, config: Pedicel.config)
