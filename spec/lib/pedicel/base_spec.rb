@@ -384,4 +384,30 @@ describe 'Pedicel::Base' do
       expect(Pedicel::Base.verify_x509_chain(params)).to be_truthy
     end
   end
+
+
+  describe 'Pedicel::Base.verify_signed_time' do
+    let (:signature) { OpenSSL::PKCS7.new(pedicel.signature) }
+    let (:now) { signature.signers.first.signed_time }
+
+    it 'does not err when all checks are good' do
+      expect{Pedicel::Base.verify_signed_time(signature: signature, now: now)}.to_not raise_error
+    end
+
+    let (:limit) { Pedicel.config[:replay_threshold_seconds] }
+
+    it 'errs if the signature is too new' do
+      expect{Pedicel::Base.verify_signed_time(signature: signature, now: now-limit)}.to_not raise_error
+      expect{Pedicel::Base.verify_signed_time(signature: signature, now: now-limit-1)}.to raise_error(Pedicel::SignatureError)
+    end
+
+    it 'errs if the signature is too old' do
+      expect{Pedicel::Base.verify_signed_time(signature: signature, now: now+limit)}.to_not raise_error
+      expect{Pedicel::Base.verify_signed_time(signature: signature, now: now+limit+1)}.to raise_error(Pedicel::SignatureError)
+    end
+
+    it 'is truthy when all checks are good' do
+      expect(Pedicel::Base.verify_signed_time(signature: signature, now: now)).to be_truthy
+    end
+  end
 end
