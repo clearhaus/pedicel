@@ -195,9 +195,9 @@ describe 'Signature verification' do
   describe 'Pedicel::Base.verify_x509_chain' do
     let (:params) do
       {
-        root: backend.ca_certificate,
+        root:         backend.ca_certificate,
         intermediate: backend.intermediate_certificate,
-        leaf: backend.leaf_certificate,
+        leaf:         backend.leaf_certificate,
       }
     end
 
@@ -205,37 +205,103 @@ describe 'Signature verification' do
       expect{Pedicel::Base.verify_x509_chain(params)}.to_not raise_error
     end
 
-    it 'is truthy when the chain is good' do
-      expect(Pedicel::Base.verify_x509_chain(params)).to be_truthy
-    end
-
     it 'errs if certs are interchanged' do
       params.keys.permutation.reject{|ks| ks == params.keys}.each do |permutated_keys|
         permutated_params = permutated_keys.zip(params.values).to_h
 
-        expect{Pedicel::Base.verify_x509_chain(permutated_params)}.to raise_error(Pedicel::SignatureError, /(did not sign|is( not)? self-signed)/)
+        expect{Pedicel::Base.verify_x509_chain(permutated_params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
       end
     end
 
-    it 'errs if any 2 certificates are equal' do
-      params.keys.permutation(2) do |one, another|
-        mangled_params = params.dup
-        mangled_params[one] = mangled_params[another]
-
-        expect{Pedicel::Base.verify_x509_chain(mangled_params)}.to raise_error(Pedicel::SignatureError, /(did not sign|is( not)? self-signed)/)
-      end
+    it 'errs if intermediate equals leaf (because root did not sign leaf)' do
+      params[:intermediate] = params[:leaf]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain due to intermediate/)
     end
 
-    it 'errs if all 3 certificates are equal' do
-      params.values.each do |value|
-        expect{Pedicel::Base.verify_x509_chain(root: value, intermediate: value, leaf: value)}.to raise_error(Pedicel::SignatureError, /is( not)? self-signed/)
-      end
+    it 'errs if leaf equals intermediate (because the intermediate must sign leaf)' do
+      params[:leaf] = params[:intermediate]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if intermediate equals root (because root did not sign leaf)' do
+      params[:intermediate] = params[:root]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if root equals intermediate (because intermediate is not self-signed)' do
+      params[:root] = params[:intermediate]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if leaf equals root (because intermediate must sign leaf)' do
+      params[:leaf] = params[:root]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if root equals leaf (becuase leaf is not self-signed)' do
+      params[:root] = params[:leaf]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if leaf is used for all 3 certificates (because of multiple reasons)' do
+      params[:root]         = params[:leaf]
+      params[:intermediate] = params[:leaf]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if intermediate is used for all 3 certificates' do
+      params[:root] = params[:intermediate]
+      params[:leaf] = params[:intermediate]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    #it 'does not err when root is used for all 3 certificates' do
+    #  params[:intermediate] = params[:root]
+    #  params[:leaf]         = params[:root]
+    #  expect{Pedicel::Base.verify_x509_chain(params)}.to_not raise_error
+    #end
+    #
+    # Intentionally removed. It would fail with the current implementation.
+    #
+    # The thought behind the test is that if root was used in all three places,
+    # then all conditions are fulfilled, but it would also be quite strange to
+    # see Apple's Root CA certificate sign a payment token. Thus, we accept that
+    # this theoretically acceptable chain is not accepted (because it will never
+    # happen).
+
+    it 'errs if intermediate is not signed by root' do
+      params[:root] = PedicelPay::Backend.generate.ca_certificate
+
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if leaf is not signed by intermediate (1)' do
+      params[:leaf] = PedicelPay::Backend.generate.leaf_certificate
+
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if leaf is not signed by intermediate (2)' do
+      another_backend = PedicelPay::Backend.generate
+      params[:root]         = another_backend.ca_certificate
+      params[:intermediate] = another_backend.intermediate_certificate
+
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'errs if leaf is not signed by intermediate and intermediate is not signed by root' do
+      params[:root]         = PedicelPay::Backend.generate.ca_certificate
+      params[:intermediate] = PedicelPay::Backend.generate.intermediate_certificate
+
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
+
+    it 'is truthy when the chain is good' do
+      expect(Pedicel::Base.verify_x509_chain(params)).to be_truthy
     end
   end
 
   describe 'Pedicel::EC#validate_signature' do
-    it 'works'
-
     let (:signature) { OpenSSL::PKCS7.new(pedicel.signature) }
 
     it 'does not err when the signature is good' do
@@ -272,6 +338,16 @@ describe 'Signature verification' do
       pedicel = Pedicel::EC.new(token.to_hash)
 
       expect{pedicel.send(:validate_signature, {signature: signature, leaf: backend.leaf_certificate})}.to raise_error(Pedicel::SignatureError, /signature.*not match.* message/)
+    end
+
+    it 'errs if the signature algorithm is not ecdsa-with-SHA256' do
+      expect(OpenSSL::Digest::SHA256).to receive(:new).and_return(OpenSSL::Digest::SHA512.new).at_least(:once)
+
+      expect{pedicel.send(:validate_signature, {signature: signature, leaf: backend.leaf_certificate})}.to raise_error(Pedicel::SignatureError, 'signature algorithm is not ecdsa-with-SHA256')
+    end
+
+    it 'is truthy when the signature is good' do
+      expect(pedicel.send(:validate_signature, {signature: signature, leaf: backend.leaf_certificate})).to be_truthy
     end
   end
 
