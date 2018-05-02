@@ -144,6 +144,12 @@ module Pedicel
         raise CertificateError, "invalid root certificate: #{e.message}"
       end
 
+      # 1.a
+      # Ensure that the certificates contain the correct custom OIDs: (...).
+      # The value for these marker OIDs doesn't matter, only their presence.
+      leaf, intermediate, root = self.class.extract_certificates(signature: s)
+      # Implicit since these are the ones extracted.
+
       # 1.b
       # Ensure that the root CA is the Apple Root CA - G3. (...)
       self.class.verify_root_certificate(root: root, intermediate: intermediate)
@@ -166,27 +172,32 @@ module Pedicel
       self
     end
 
-    def self.verify_signature_certificate_oids(signature:, config: Pedicel.config)
-      leafs, intermediates = [], []
+    def self.extract_certificates(signature:, config: Pedicel.config)
+      leafs, intermediates, roots = [], [], []
 
       signature.certificates.each do |certificate|
+        root = true
         certificate.extensions.each do |extension|
           case extension.oid
-          when config[:oids][:leaf_certificate]         then leafs << certificate
-          when config[:oids][:intermediate_certificate] then intermediates << certificate
+          when config[:oids][:intermediate_certificate]
+            intermediates << certificate
+            root = false
+            break
+          when config[:oids][:leaf_certificate]
+            leafs << certificate
+            root = false
+            break
           end
         end
+
+        roots << certificate if root
       end
 
-      unless leafs.length == 1
-        raise SignatureError, "no unique leaf certificate found (OID #{config[:oids][:leaf_certificate]})"
-      end
+      raise SignatureError, "no unique leaf certificate found (OID #{config[:oids][:leaf_certificate]})" unless leafs.length == 1
+      raise SignatureError, "no unique intermediate certificate found (OID #{config[:oids][:intermediate_certificate]})" unless intermediates.length == 1
+      raise SignatureError, "no unique root certificate found" unless roots.length == 1
 
-      unless intermediates.length == 1
-        raise SignatureError, "no unique intermediate certificate found (OID #{config[:oids][:leaf_certificate]})"
-      end
-
-      [leafs.first, intermediates.first]
+      [leafs.first, intermediates.first, roots.first]
     end
 
     def self.verify_root_certificate(root:, intermediate:)
