@@ -168,6 +168,8 @@ module Pedicel
       unless signature.verify(certificates, store, message, flags)
         raise SignatureError, 'signature does not match the message'
       end
+
+      true
     end
   end
 end
