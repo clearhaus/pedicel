@@ -134,7 +134,7 @@ describe "Spreedly's gala Ruby library's test case" do
   end
 
   describe 'decryption with private key and certificate' do
-    xit 'decrypts correctly' do
+    it 'decrypts correctly' do
       d = pedicel.decrypt(private_key: private_key, certificate: certificate, now: Time.new(2014,10,27,19,51,43))
 
       expect(d).to eq(decrypted_data)
@@ -146,13 +146,13 @@ describe "Spreedly's gala Ruby library's test case" do
   end
 
   context 'symmetric key' do
-    xit 'finds the correct symmetric key' do
+    it 'finds the correct symmetric key' do
       skey = pedicel.symmetric_key(private_key: private_key, certificate: certificate)
 
       expect(skey).to eq(symmetric_key)
     end
 
-    xit 'can decrypt using the symmetric key' do
+    it 'can decrypt using the symmetric key' do
       expect(pedicel.decrypt(symmetric_key: symmetric_key, now: Time.new(2014,10,27,19,51,43))).to eq(decrypted_data)
     end
   end
@@ -162,7 +162,7 @@ describe "Spreedly's gala Ruby library's test case" do
   end
 
   context 'shared secret' do
-    xit 'finds the correct shared secret' do
+    it 'finds the correct shared secret' do
       ss = pedicel.shared_secret(private_key: private_key)
 
       expect(ss).to eq(shared_secret)
@@ -170,7 +170,7 @@ describe "Spreedly's gala Ruby library's test case" do
   end
 
   context 'deriving symmetric key from shared secret' do
-    xit 'works' do
+    it 'works' do
       sk = pedicel.symmetric_key(shared_secret: shared_secret, certificate: certificate)
 
       expect(sk).to eq(symmetric_key)
