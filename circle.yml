@@ -1,0 +1,15 @@
+---
+machine:
+    environment:
+        RUBY_VERSIONS: 2.4.3,2.5.1
+
+dependencies:
+    override:
+        - rvm get head
+        - rvm install $RUBY_VERSIONS
+        - rvm $RUBY_VERSIONS --verbose do gem install bundler
+        - rvm $RUBY_VERSIONS --verbose do bundle install
+
+test:
+    override:
+        - rvm $RUBY_VERSIONS --verbose do bundle exec rspec spec
