@@ -63,7 +63,7 @@ module Pedicel
       begin
         pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
       rescue => e
-        raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
+        raise EcKeyError, "invalid ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
       unless privkey.group == pubkey.group
@@ -75,6 +75,9 @@ module Pedicel
     end
 
     def self.symmetric_key(merchant_id:, shared_secret:)
+      raise ArgumentError, 'merchant_id must be a SHA256' unless merchant_id.is_a?(String) && merchant_id.length == 32
+      raise ArgumentError, 'shared_secret must be a string' unless shared_secret.is_a?(String)
+
       # http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
       # Section 5.8.1.1, The Single-Step KDF Specification.
       #
