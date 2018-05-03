@@ -1,264 +1,156 @@
-# frozen_string_literal: true
-
-require 'pedicel'
 require 'pedicel/validator'
 require 'pedicel-pay'
 
 require 'json'
 require 'digest'
 
-require 'pry'
+describe Pedicel::Validator do
+  let (:token) do
+    backend = PedicelPay::Backend.generate
+    client = backend.generate_client
 
-module Pedicel
-  class ValidationFactory
-    def self.valid_token
-      _, _, token = PedicelPay::Helper.generate_all
-      token
+    token = PedicelPay::Token.new.sample
+    backend.encrypt_and_sign(token, recipient: client)
+
+    token.to_hash
+  end
+
+  describe '.valid_token?' do
+    it 'relies on validate_token' do
+      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_return(true)
+
+      expect(Pedicel::Validator.valid_token?(nil)).to eq(true)
     end
 
-    def self.token_with_pan(pan)
-      _, _, token = PedicelPay::Helper.generate_all(
-        token_data: {
-          pan: pan,
-        }
-      )
-      token
+    it 'relies on validate_token' do
+      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_raise(Pedicel::Validator::Error, 'boom')
+
+      expect(Pedicel::Validator.valid_token?(nil)).to eq(false)
+    end
+  end
+
+  describe '.validate_token' do
+    subject { lambda { Pedicel::Validator.validate_token(token) } }
+
+    it 'does not err on a valid token' do
+      is_expected.to_not raise_error
+    end
+
+    it 'is truthy a valid token' do
+      expect(Pedicel::Validator.validate_token(token)).to be_truthy
+    end
+
+    it 'errs when data is missing' do
+      token.delete('data')
+      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+    end
+
+    it 'errs when data is missing' do
+      token.delete('data')
+      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+    end
+
+    it 'errs when data is not a string' do
+      token['data'] = [1,2,3]
+      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+
+      token['data'] = { :'a string as a hash key' => 'a string in a hash value' }
+      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+    end
+
+    it 'errs when data is not Base 64' do
+      token['data'] = '%'
+      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base.*64/)
     end
   end
 end
 
-# rubocop:disable Metrics/BlockLength
-describe 'Pedicel::Validator.validate_token_data' do
-  context 'with valid data' do
-    it 'should validate' do
-      data = Pedicel::ValidationFactory.valid_token.unencrypted_data
+describe Pedicel::Validator::Predicates do
+  describe '.base64?' do
+    def base64?(x); subject.base64?(x); end
 
-      expect(Pedicel::Validator.validate_token_data(data.to_hash)).to be true
-      expect(Pedicel::Validator.valid_token_data?(data.to_hash)).to be true
+    it 'true for valid base 64' do
+      expect(base64?('')).to eq(true)
+      expect(base64?('validbase64=')).to eq(true)
+    end
+
+    it 'false for invalid base 64' do
+      expect(base64?(nil)).to be false
+      expect(base64?('%')).to be false
+      expect(base64?('fooo=')).to be false
+      expect(base64?('f===')).to be false
     end
   end
 
-  it 'should support shorthand notation' do
-    expect(Pedicel::Validator.valid_token_data?({})).to be false
-  end
+  describe '.hex?' do
+    def hex?(x); subject.hex?(x); end
 
-  context 'with invalid pan' do
-    it 'should reject if shorter than 12' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224')
-                                        .unencrypted_data
-
-      expect do
-        Pedicel::Validator.validate_token_data(token.to_hash)
-      end.to raise_error(Pedicel::Validator::TokenDataFormatError)
-        .with_message(/applicationPrimaryAccountNumber.+invalid pan/i)
+    it 'true for a hex string' do
+      expect(hex?('')).to be true
+      expect(hex?(['a'..'f', 'A'..'F', 0..9].map(&:to_a).inject(&:concat).join)).to be true
     end
 
-    it 'should reject if longer than 19' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224518264891')
-                                        .unencrypted_data
-
-      expect do
-        Pedicel::Validator.validate_token_data(token.to_hash)
-      end.to raise_error(Pedicel::Validator::TokenDataFormatError)
-        .with_message(/applicationPrimaryAccountNumber.+invalid pan/i)
-    end
-
-    it 'should reject if contains non-digits' do
-      token = Pedicel::ValidationFactory.token_with_pan('122492765917264a')
-                                        .unencrypted_data
-
-      expect do
-        Pedicel::Validator.validate_token_data(token.to_hash)
-      end.to raise_error(Pedicel::Validator::TokenDataFormatError)
-        .with_message(/applicationPrimaryAccountNumber.+invalid pan/i)
+    it 'false for non-Hex characters' do
+      expect(hex?('g')).to be false
+      expect(hex?('G')).to be false
+      expect(hex?('_')).to be false
+      expect(hex?(' ')).to be false
+      expect(hex?('/')).to be false
     end
   end
 
-  it 'should reject if eciIndicator is not two digits' do
-    %w[x1 1 231].each do |value|
-      data = Pedicel::ValidationFactory.valid_token.unencrypted_data.to_hash
-      data[:paymentData][:eciIndicator] = value
+  describe '.pan?' do
+    def pan?(x); subject.pan?(x); end
 
-      expect do
-        Pedicel::Validator.validate_token_data(data.to_hash)
-      end.to raise_error(Pedicel::Validator::TokenDataFormatError)
-        .with_message(/eciIndicator.+not an eci indicator/i)
+    it 'true for valid PANs' do
+      expect(pan?('123456789012')).to be true
+      expect(pan?('1234567890123456789')).to be true
+      expect(pan?('1234567890123456')).to be true
+      expect(pan?('1000000000000000')).to be true
+    end
+
+    it 'false if PAN contains anything but digits' do
+      expect(pan?('1a34567890123456')).to be false
+      expect(pan?('1 34567890123456')).to be false
+      expect(pan?('1_34567890123456')).to be false
+      expect(pan?('134567890123456 ')).to be false
+      expect(pan?(' 134567890123456')).to be false
+    end
+
+    it 'false if PAN starts with a zero' do
+      expect(pan?('0234567890123456')).to be false
+    end
+
+    it 'false if PAN is shorter than 12 digits' do
+      expect(pan?('12345678901')).to be false
+    end
+
+    it 'false if PAN is longer than 19 digits' do
+      expect(pan?('12345678901234567890')).to be false
     end
   end
 
-  it 'should reject invalid time' do
-    %w[11111 1111111 999999].each do |value|
-      data = Pedicel::ValidationFactory.valid_token.unencrypted_data.to_hash
-      data[:applicationExpirationDate] = value
-
-      expect do
-        Pedicel::Validator.validate_token_data(data.to_hash)
-      end.to raise_error(Pedicel::Validator::TokenDataFormatError)
-        .with_message(/applicationExpirationDate.+invalid date format/i)
-    end
-  end
-end
-
-describe 'Pedicel::Validator.validate_token' do
-  context 'with valid token' do
-    it 'should validate token' do
-      token = Pedicel::ValidationFactory.valid_token
-
-      token_hash = JSON.parse(token.to_json, symbolize_names: true)
-      expect(Pedicel::Validator.validate_token(token.to_hash)).to be true
-
-      expect(Pedicel::Validator.valid_token?(token_hash)).to be true
-    end
-  end
-
-  it 'should support shorthand notation' do
-    expect(Pedicel::Validator.valid_token?({})).to be false
-  end
-
-  context 'should check for base64, so' do
-    it 'should fail on non base64-encoded text' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224').to_hash
-
-      token['data'] = token['data'][0..-2]
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/data.*invalid base64/i)
+  describe '.eci?' do
+    def eci?(value)
+      subject.eci?(value)
     end
 
-    it 'should fail on non base64-encoded signature' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224').to_hash
-
-      token['signature'] = token['signature'][0..-2]
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/signature.*invalid base64/i)
+    it 'is true for valid ECIs' do
+      expect(eci?('05')).to be true
+      expect(eci?('06')).to be true
+      expect(eci?('07')).to be true
     end
 
-    it 'should fail on non base64-encoded ephemeralPublicKey' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224').to_hash
-
-      token['header']['ephemeralPublicKey'] =
-        token['header']['ephemeralPublicKey'][0..-2]
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/ephemeralpublickey.+invalid base64/i)
+    it 'is false for ECIs of wrong length' do
+      expect(eci?('005')).to be false
+      expect(eci?('5')).to   be false
+      expect(eci?(' 05')).to be false
     end
 
-    it 'should fail on non base64-encoded publicKeyHash' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224').to_hash
-
-      token['header']['publicKeyHash'] =
-        token['header']['publicKeyHash'][0..-2]
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/publicKeyHash.+invalid base64/i)
+    it 'is false for non-numeric ECIs' do
+      expect(eci?('  ')).to be false
+      expect(eci?('ab')).to be false
+      expect(eci?('__')).to be false
     end
-  end
-
-  context 'should check for hex encoding:' do
-    it 'should fail for non-hex applicationData' do
-      token = Pedicel::ValidationFactory.token_with_pan('24153681224').to_hash
-
-      token['header']['applicationData'] = 'this is not hex-encoded'
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/applicationData.+invalid hex/i)
-    end
-
-    it 'should fail for non-hex transactionId' do
-      token = Pedicel::ValidationFactory.valid_token.to_hash
-
-      token['header']['transactionId'] = 'this is very much not hex-encoded'
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/transactionId.+invalid hex/i)
-    end
-  end
-
-  context 'should check hashes:' do
-    it 'should fail on non-sha256 applicationData' do
-      token = Pedicel::ValidationFactory.valid_token.to_hash
-
-      digest = Digest::SHA512.hexdigest 'Testing string'
-
-      token['header']['applicationData'] = digest
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/applicationData.+not hex-encoded SHA256/i)
-    end
-
-    it 'should succeed on sha256 applicationData' do
-      token = Pedicel::ValidationFactory.valid_token.to_hash
-
-      digest = Digest::SHA256.hexdigest 'Testing string'
-
-      token['header']['applicationData'] = digest
-
-      expect(Pedicel::Validator.valid_token?(token)).to be true
-    end
-
-    it 'should fail on non-sha256 publicKeyHash' do
-      token = Pedicel::ValidationFactory.valid_token.to_hash
-
-      digest = Digest::SHA512.base64digest 'Testing string'
-
-      token['header']['publicKeyHash'] = digest
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/publicKeyHash.+not base64-encoded SHA256/i)
-    end
-
-    it 'should fail on base64-encoded publicKeyHash that is too long' do
-      token = Pedicel::ValidationFactory.valid_token.to_hash
-
-      token['header']['publicKeyHash'] =
-        Base64.strict_encode64(Random.new.bytes(33))
-
-      expect do
-        Pedicel::Validator.validate_token(token)
-      end.to raise_error(Pedicel::Validator::TokenFormatError)
-        .with_message(/publicKeyHash.+not base64-encoded sha256/i)
-    end
-  end
-
-  it 'should fail if signature is not PKCS7' do
-    token = Pedicel::ValidationFactory.valid_token.to_hash
-    fakesig = Base64.strict_encode64('This is not a signature')
-    token['signature'] = fakesig
-
-    expect do
-      Pedicel::Validator.validate_token(token)
-    end.to raise_error(Pedicel::Validator::TokenFormatError)
-      .with_message(/signature.+PKCS7/i)
-  end
-
-  it 'should fail if ephemeralPublicKey is not X.509 certificate' do
-    token = Pedicel::ValidationFactory.valid_token.to_hash
-    key = OpenSSL::PKey::RSA.new 4096
-
-    token['header']['ephemeralPublicKey'] =
-      Base64.strict_encode64(key.public_key.to_der)
-
-    expect do
-      Pedicel::Validator.validate_token(token)
-    end.to raise_error(Pedicel::Validator::TokenFormatError)
-      .with_message(/ephemeralPublicKey.+not a EC public key/i)
   end
 end
-# rubocop:enable Metrics/BlockLength
