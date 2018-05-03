@@ -133,8 +133,7 @@ module Pedicel
         &.value # Hex encoded Merchant ID plus perhaps extra non-hex chars.
         &.delete('^[0-9a-fA-F]') # Remove non-hex chars.
 
-      raise CertificateError, 'no merchant identifier in certificate' unless
-        merchant_id_hex
+      raise CertificateError, 'no merchant identifier in certificate' unless merchant_id_hex
 
       [merchant_id_hex].pack('H*')
     end
