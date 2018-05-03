@@ -32,9 +32,7 @@ module Pedicel
       include Dry::Logic::Predicates
 
       predicate(:base64?) do |value|
-        !Base64.strict_decode64(value).nil?
-      rescue
-        false
+        value.is_a?(String)
       end
 
       predicate(:hex?) do |value|
