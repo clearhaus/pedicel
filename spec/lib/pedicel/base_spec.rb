@@ -170,6 +170,7 @@ describe 'Pedicel::Base' do
       end
 
       it "uses the config's :trusted_ca_pem" do
+        backend # Have the certificates created first.
         trusted_root = OpenSSL::X509::Certificate.new(Pedicel.config[:trusted_ca_pem])
         expect(Pedicel::Base).to receive(:verify_root_certificate).with(hash_including(trusted_root: trusted_root))
 
