@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require 'dry-validation'
 require 'base64'
 require 'openssl'
@@ -133,9 +131,7 @@ module Pedicel
     def self.validate_token(token)
       validation = TokenSchema.call(token)
 
-      unless validation.success?
-        raise TokenFormatError, format_errors(validation)
-      end
+      raise TokenFormatError, format_errors(validation) if validation.failure?
 
       true
     end
@@ -149,9 +145,7 @@ module Pedicel
     def self.validate_token_data(token_data)
       validation = TokenDataSchema.call(token_data)
 
-      unless validation.success?
-        raise TokenDataFormatError, format_errors(validation)
-      end
+      raise TokenDataFormatError, format_errors(validation) if validation.failure?
 
       true
     end
@@ -163,8 +157,7 @@ module Pedicel
     end
 
     def self.format_errors(validation)
-      validation.errors.map { |key, msg| "#{key}: #{msg}\n" }
-                .join(', and ')
+      validation.errors.map{|key, msg| "#{key}: #{msg}"}.join('; ')
     end
   end
 end
