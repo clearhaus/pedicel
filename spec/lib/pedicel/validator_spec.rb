@@ -82,6 +82,16 @@ describe Pedicel::Validator do
         token_h.delete('signature')
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*missing/)
       end
+
+      it 'errs when not a string' do
+        token_h['signature'] = 123
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*must be a string/)
+      end
+
+      it 'errs when not a hex string' do
+        token_h['signature'] = 'not hex'
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*invalid base64/)
+      end
     end
 
     context 'version' do
@@ -90,14 +100,19 @@ describe Pedicel::Validator do
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version/)
       end
 
+      it 'errs when missing' do
+        token_h.delete('version')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*missing/)
+      end
+
       it 'errs when not a strign' do
         token_h['version'] = 123
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*must be a string/)
       end
 
-      it 'errs when missing' do
-        token_h.delete('version')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*missing/)
+      it 'errs when not a supported version' do
+        token_h['version'] = 'EC_v0'
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*must be one of/)
       end
     end
 
@@ -122,14 +137,19 @@ describe Pedicel::Validator do
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData/)
         end
 
+        it 'does not err when missing' do
+          header_h.delete('applicationData')
+          is_expected.to_not raise_error
+        end
+
         it 'errs when not a string' do
           header_h['applicationData'] = 123
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData.*must be a string/)
         end
 
-        it 'does not err when missing' do
-          header_h.delete('applicationData')
-          is_expected.to_not raise_error
+        it 'errs when not a hex string' do
+          header_h['applicationData'] = 'not hex'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData.*invalid hex/)
         end
       end
 

@@ -13,24 +13,20 @@ module Pedicel
     class TokenFormatError < Error; end
     class TokenDataFormatError < Error; end
 
-    DRY_CUSTOM_PREDICATE_ERRORS = {
-      base64?: 'invalid base64',
-      hex?: 'invalid hex',
-      pan?: 'invalid pan',
-      yymmdd?: 'invalid date format YYMMDD',
-      ecPublicKey?: 'is not a EC public key',
-      PKCS7Signature?: 'is not a PKCS7 Signature',
-      ECI?: 'not an ECI indicator',
-      hexsha256?: 'not hex-encoded SHA256',
-      base64sha256?: 'not base64-encoded SHA256',
-    }.freeze
-
-    # Custom predicates for validation.
-    # Some predicates statements have been unfolded for unit-testing purposes,
-    # since _simplecov_ cannot check which branches have been used.
     module Predicates
       include Dry::Logic::Predicates
 
+      CUSTOM_PREDICATE_ERRORS = {
+        base64?:          'invalid base64',
+        hex?:             'invalid hex',
+        pan?:             'invalid pan',
+        yymmdd?:          'invalid date format YYMMDD',
+        ec_public_key?:   'is not an EC public key',
+        pkcs7_signature?: 'is not a PKCS7 Signature',
+        eci?:             'not an ECI indicator',
+        hex_sha256?:      'not hex-encoded SHA256',
+        base64_sha256?:   'not base64-encoded SHA256',
+      }.freeze
 
       predicate(:base64?) do |x|
         str?(x) &&
