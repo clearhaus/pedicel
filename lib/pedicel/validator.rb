@@ -5,7 +5,7 @@ require 'base64'
 require 'openssl'
 
 module Pedicel
-  # Validation class for ApplePay Payment Token and associated data:
+  # Validation class for Apple Pay Payment Token and associated data:
   # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
   # This purposefully only does syntactic validation (as opposed to semantic).
   class Validator
