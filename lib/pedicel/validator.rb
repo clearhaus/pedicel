@@ -31,86 +31,32 @@ module Pedicel
     module Predicates
       include Dry::Logic::Predicates
 
-      predicate(:base64?) do |value|
-        value.is_a?(String)
+
+      predicate(:base64?) do |x|
+        str?(x) &&
+          !!(x =~ /\A[=A-Za-z0-9+\/]*\z/) && # allowable chars
+          x.length.remainder(4).zero? && # multiple of 4
+          !(x =~ /=[^$=]/) && # may only end with ='s
+          !(x =~ /===/) # at most 2 ='s
       end
 
-      predicate(:hex?) do |value|
-        if Regexp.new(/\A[a-f0-9]*\z/i).match(value).nil?
-          false
-        else
-          true
-        end
-      end
+      #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
 
-      # Reference: https://en.wikipedia.org/wiki/Payment_card_number
-      predicate(:pan?) do |value|
-        if Regexp.new(/\A[0-9]{12,19}\z/).match(value).nil?
-          false
-        else
-          true
-        end
-      end
+      predicate(:base64_sha256?) { |x| base64?(x) && Base64.decode64(x).length == 32 }
 
-      predicate(:yymmdd?) do |value|
-        unless value.length == 6 # rubocop:disable Style/IfUnlessModifier
-          return false
-        end
+      predicate(:hex?) { |x| str?(x) && x.match?(/\A[a-f0-9]*\z/i) }
 
-        begin
-          Time.new(value[0..1], value[2..3], value[4..5]).is_a?(Time)
-        rescue
-          false
-        end
-      end
+      predicate(:hex_sha256?) { |x| hex?(x) && x.length == 64 }
 
-      predicate(:ecPublicKey?) do |value|
-        decoded = Base64.decode64(value)
-        begin
-          OpenSSL::PKey::EC.new(decoded).check_key
-        rescue
-          false
-        end
-      end
+      predicate(:pan?) { |x| str?(x) && x.match?(/\A[1-9][0-9]{11,18}\z/) }
 
-      predicate(:PKCS7Signature?) do |value|
-        decoded = Base64.decode64(value)
-        begin
-          OpenSSL::PKCS7.new(decoded)
-          true
-        rescue
-          false
-        end
-      end
+      predicate(:yymmdd?) { |x| str?(x) && x.match?(/\A\d{6}\z/) }
 
-      # Check if `value` is 2 digits.
-      predicate(:ECI?) do |value|
-        if !Regexp.new('\A\d{2}\z').match(value).nil?
-          true
-        else
-          false
-        end
-      end
+      predicate(:eci?) { |x| str?(x) && x.match?(/\A\d{2}\z/) }
 
-      # Check that length is 256bits, that is 64 hex digits.
-      # Depends on :hex? check.
-      predicate(:hexsha256?) do |value|
-        if value.length == 64 # rubocop:disable Style/RedundantConditional
-          true
-        else
-          false
-        end
-      end
+      predicate(:ec_public_key?) { |x| base64?(x) && OpenSSL::PKey::EC.new(Base64.decode64(x)).check_key rescue false }
 
-      predicate(:base64sha256?) do |value|
-        if value.length != 44
-          false
-        elsif !value.end_with?('=')
-          false
-        else
-          true
-        end
-      end
+      predicate(:pkcs7_signature?) { |x| base64?(x) && !!OpenSSL::PKCS7.new(Base64.decode64(x)) rescue false }
     end
 
     TokenSchema = Dry::Validation.Schema do
