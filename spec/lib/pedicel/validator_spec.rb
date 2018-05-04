@@ -55,15 +55,15 @@ describe Pedicel::Validator do
 
       it 'errs when data is missing' do
         token_h.delete('data')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*missing/)
       end
 
       it 'errs when data is not a string' do
         token_h['data'] = [1,2,3]
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*must be a string/)
 
         token_h['data'] = { :'a string as a hash key' => 'a string in a hash value' }
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*must be a string/)
       end
 
       it 'errs when data is not Base 64' do
@@ -72,45 +72,101 @@ describe Pedicel::Validator do
       end
     end
 
-    context 'wrong signature' do
-      it 'errs' do
+    context 'signature' do
+      it 'errs when invalid' do
         token_h['signature'] = 'invalid signature'
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature/)
       end
+
+      it 'errs when missing' do
+        token_h.delete('signature')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*missing/)
+      end
     end
 
-    context 'wrong version' do
-      it 'errs' do
+    context 'version' do
+      it 'errs when invalid' do
         token_h['version'] = 'invalid version'
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version/)
       end
+
+      it 'errs when not a strign' do
+        token_h['version'] = 123
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*must be a string/)
+      end
+
+      it 'errs when missing' do
+        token_h.delete('version')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*missing/)
+      end
     end
 
-    context 'wrong header' do
+    context 'header' do
       let (:header_h) { token_h['header'] }
 
-      context 'wrong applicationData' do
-        it 'errs' do
+      it 'errs when missing' do
+        token_h.delete('header')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /header.*missing/)
+      end
+
+      it 'errs when not a hash' do
+        ['asdf', [], 123].each do |invalid|
+          token_h['header'] = invalid
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /header.*hash/)
+        end
+      end
+
+      context 'applicationData' do
+        it 'errs when invalid' do
           header_h['applicationData'] = 'invalid applicationData'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData/)
         end
+
+        it 'errs when not a string' do
+          header_h['applicationData'] = 123
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData.*must be a string/)
+        end
+
+        it 'does not err when missing' do
+          header_h.delete('applicationData')
+          is_expected.to_not raise_error
+        end
       end
 
-      context 'wrong ephemeralPublicKey' do
-        it 'errs' do
+      context 'ephemeralPublicKey' do
+        it 'errs when invalid' do
           header_h['ephemeralPublicKey'] = 'invalid ephemeralPublicKey'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey/)
         end
-      end
+        it 'errs when not a string' do
+          header_h['ephemeralPublicKey'] = 123
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*must be a string/)
+        end
 
-      context 'wrong wrappedKey' do
-        it 'errs' do
-          header_h['wrappedKey'] = 'invalid wrappedKey'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey/)
+        it 'errs when not base 64' do
+          header_h['ephemeralPublicKey'] = '%'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*invalid base64/)
+        end
+
+        it 'errs when invalid EC public key' do
+          header_h['ephemeralPublicKey'] = 'validBase64ButInvalidEcPublicKey'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*EC public key/)
         end
       end
 
-      context 'consistency for ephemeralPublicKey and wrappedKey' do
+      context 'wrappedKey' do
+        it 'errs when invalid' do
+          header_h['wrappedKey'] = 'invalid wrappedKey'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey.*invalid/)
+        end
+
+        it 'errs when not a string' do
+          header_h['wrappedKey'] = 123
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey.*must be a string/)
+        end
+      end
+
+      context 'consistency among ephemeralPublicKey and wrappedKey' do
         it 'errs when both are present' do
           header_h['ephemeralPublicKey'] = valid_ec_public_key
           header_h['wrappedKey'] = 'validbase64='
@@ -129,24 +185,54 @@ describe Pedicel::Validator do
           is_expected.to_not raise_error
         end
 
-        it 'does not erro when only wrappedKey is present' do
+        it 'does not err when only wrappedKey is present' do
           header_h.delete('ephemeralPublicKey')
           header_h['wrappedKey'] = 'validbase64='
           is_expected.to_not raise_error
         end
       end
 
-      context 'wrong publicKeyHash' do
-        it 'errs' do
+      context 'publicKeyHash' do
+        it 'errs when invalid' do
           header_h['publicKeyHash'] = 'invalid publicKeyHash'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash/)
         end
+
+        it 'errs when missing' do
+          header_h.delete('publicKeyHash')
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*missing/)
+        end
+
+        it 'errs when not a string' do
+          header_h['publicKeyHash'] = 123
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*must be a string/)
+        end
+
+        it 'errs when not base 64' do
+          header_h['publicKeyHash'] = '%'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*invalid base64/)
+        end
       end
 
-      context 'wrong transactionId' do
-        it 'errs' do
+      context 'transactionId' do
+        it 'errs when invalid' do
           header_h['transactionId'] = 'invalid transactionId'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId/)
+        end
+
+        it 'errs when missing' do
+          header_h.delete('transactionId')
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*missing/)
+        end
+
+        it 'errs when not a string' do
+          header_h['transactionId'] = 123
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*must be a string/)
+        end
+
+        it 'errs when not a hex string' do
+          header_h['transactionId'] = 'not hex'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*invalid hex/)
         end
       end
     end
