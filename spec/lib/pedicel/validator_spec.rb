@@ -4,6 +4,8 @@ require 'pedicel-pay'
 require 'json'
 require 'digest'
 
+valid_ec_public_key = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0wzW/i0nT3XOeo6srobJRGnUlmqGTFahuHEOw4M9nxUlTBaQUNc8HlN/z1HbepGXTZWDSJB2deCGfhsrOdVryQ=='
+
 describe Pedicel::Validator do
   let (:token) do
     backend = PedicelPay::Backend.generate
@@ -12,7 +14,7 @@ describe Pedicel::Validator do
     token = PedicelPay::Token.new.sample
     backend.encrypt_and_sign(token, recipient: client)
 
-    token.to_hash
+    token
   end
 
   describe '.valid_token?' do
@@ -30,37 +32,123 @@ describe Pedicel::Validator do
   end
 
   describe '.validate_token' do
-    subject { lambda { Pedicel::Validator.validate_token(token) } }
+    context 'can be happy' do
+      subject { lambda { Pedicel::Validator.validate_token(token.to_hash) } }
 
-    it 'does not err on a valid token' do
-      is_expected.to_not raise_error
+      it 'does not err on a valid token' do
+        is_expected.to_not raise_error
+      end
+
+      it 'is truthy a valid token' do
+        expect(Pedicel::Validator.validate_token(token.to_hash)).to be_truthy
+      end
     end
 
-    it 'is truthy a valid token' do
-      expect(Pedicel::Validator.validate_token(token)).to be_truthy
+    let (:token_h) { token.to_hash }
+    subject { lambda { Pedicel::Validator.validate_token(token_h) } }
+
+    context 'wrong data' do
+      it 'errs when data is missing' do
+        token_h.delete('data')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+      end
+
+      it 'errs when data is missing' do
+        token_h.delete('data')
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+      end
+
+      it 'errs when data is not a string' do
+        token_h['data'] = [1,2,3]
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+
+        token_h['data'] = { :'a string as a hash key' => 'a string in a hash value' }
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+      end
+
+      it 'errs when data is not Base 64' do
+        token_h['data'] = '%'
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base.*64/)
+      end
     end
 
-    it 'errs when data is missing' do
-      token.delete('data')
-      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+    context 'wrong signature' do
+      it 'errs' do
+        token_h['signature'] = 'invalid signature'
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature/)
+      end
     end
 
-    it 'errs when data is missing' do
-      token.delete('data')
-      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
+    context 'wrong version' do
+      it 'errs' do
+        token_h['version'] = 'invalid version'
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version/)
+      end
     end
 
-    it 'errs when data is not a string' do
-      token['data'] = [1,2,3]
-      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
+    context 'wrong header' do
+      let (:header_h) { token_h['header'] }
 
-      token['data'] = { :'a string as a hash key' => 'a string in a hash value' }
-      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*string/)
-    end
+      context 'wrong applicationData' do
+        it 'errs' do
+          header_h['applicationData'] = 'invalid applicationData'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData/)
+        end
+      end
 
-    it 'errs when data is not Base 64' do
-      token['data'] = '%'
-      is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base.*64/)
+      context 'wrong ephemeralPublicKey' do
+        it 'errs' do
+          header_h['ephemeralPublicKey'] = 'invalid ephemeralPublicKey'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey/)
+        end
+      end
+
+      context 'wrong wrappedKey' do
+        it 'errs' do
+          header_h['wrappedKey'] = 'invalid wrappedKey'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey/)
+        end
+      end
+
+      context 'consistency for ephemeralPublicKey and wrappedKey' do
+        it 'errs when both are present' do
+          header_h['ephemeralPublicKey'] = valid_ec_public_key
+          header_h['wrappedKey'] = 'validbase64='
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /xor/)
+        end
+
+        it 'errs when neither are present' do
+          header_h.delete('ephemeralPublicKey')
+          header_h.delete('wrappedKey')
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /xor/)
+        end
+
+        it 'does not err when only ephemeralPublicKey is present' do
+          header_h['ephemeralPublicKey'] = valid_ec_public_key
+          header_h.delete('wrappedKey')
+          is_expected.to_not raise_error
+        end
+
+        it 'does not erro when only wrappedKey is present' do
+          header_h.delete('ephemeralPublicKey')
+          header_h['wrappedKey'] = 'validbase64='
+          is_expected.to_not raise_error
+        end
+      end
+
+      context 'wrong publicKeyHash' do
+        it 'errs' do
+          header_h['publicKeyHash'] = 'invalid publicKeyHash'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash/)
+        end
+      end
+
+      context 'wrong transactionId' do
+        it 'errs' do
+          header_h['transactionId'] = 'invalid transactionId'
+          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId/)
+        end
+      end
     end
   end
 end
@@ -82,6 +170,31 @@ describe Pedicel::Validator::Predicates do
     end
   end
 
+  describe '.base64_sha256?' do
+    def base64_sha256?(x); subject.base64_sha256?(x); end
+
+    it "true for valid base 64 encoded sha256's" do
+      expect(base64_sha256?('0byNO6Svx+EJYSy3Osvd2sBSyTAlqh+ClC7au33rgqE=')).to be true
+      expect(base64_sha256?('0000000000000000000000000000000000000000000=')).to be true
+      expect(base64_sha256?('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=')).to be true
+      expect(base64_sha256?('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF=')).to be true
+    end
+
+    it 'uses base64? predicate and is non-strictly evaluating if it is a sha256' do
+      expect(subject).to receive(:base64?).and_return(true)
+      # Non-strict test: should ignore the extra ='s since the above stub allows anything.
+      expect(base64_sha256?('0000000000000000000000000000000000000000000======')).to be true
+
+      expect(subject).to receive(:base64?).and_return(false)
+      expect(base64_sha256?('0000000000000000000000000000000000000000000=')).to be false
+    end
+
+    it 'false for non-sha256 that are base 64 encoded' do
+      expect(base64_sha256?('too short')).to be false
+      expect(base64_sha256?("t#{'o'*50} long")).to be false
+    end
+  end
+
   describe '.hex?' do
     def hex?(x); subject.hex?(x); end
 
@@ -96,6 +209,31 @@ describe Pedicel::Validator::Predicates do
       expect(hex?('_')).to be false
       expect(hex?(' ')).to be false
       expect(hex?('/')).to be false
+    end
+  end
+
+  describe '.hex_sha256?' do
+    def hex_sha256?(x); subject.hex_sha256?(x); end
+
+    it "true for valid hex encoded sha256's" do
+      expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be true
+      expect(hex_sha256?('D1BC8D3BA4AFC7E109612CB73ACBDDDAC052C93025AA1F82942EDABB7DEB82A1')).to be true
+      expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddAC052C93025AA1F82942EDABB7DEB82A1')).to be true
+    end
+
+    it 'uses hex? predicate' do
+      expect(subject).to receive(:hex?).and_return(true)
+      expect(hex_sha256?('XYZc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb8XYZ')).to be true
+      # Should only care about the length when hex? has ensured that it is hex.
+
+      expect(subject).to receive(:hex?).and_return(false)
+      expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
+    end
+
+    it 'false for non-sha256 that are hex encoded' do
+      expect(hex_sha256?('aedf')).to be false
+      expect(hex_sha256?('1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
+      expect(hex_sha256?('Fd1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
     end
   end
 
@@ -130,10 +268,26 @@ describe Pedicel::Validator::Predicates do
     end
   end
 
-  describe '.eci?' do
-    def eci?(value)
-      subject.eci?(value)
+  describe '.yymmdd?' do
+    def yymmdd?(x); subject.yymmdd?(x); end
+
+    it 'is true for valid dates' do
+      expect(yymmdd?('180228')).to be true
+      expect(yymmdd?('200229')).to be true
     end
+
+    it 'is true for invalid dates that are still date-like' do
+      expect(yymmdd?('170229')).to be true
+      expect(yymmdd?('179901')).to be true
+    end
+
+    it 'is false for non-numeric "dates"' do
+      expect(yymmdd?('17ja19')).to be false
+    end
+  end
+
+  describe '.eci?' do
+    def eci?(x); subject.eci?(x); end
 
     it 'is true for valid ECIs' do
       expect(eci?('05')).to be true
@@ -151,6 +305,103 @@ describe Pedicel::Validator::Predicates do
       expect(eci?('  ')).to be false
       expect(eci?('ab')).to be false
       expect(eci?('__')).to be false
+    end
+  end
+
+  describe '.ec_public_key?' do
+    def ec_public_key?(x); subject.ec_public_key?(x); end
+
+    it 'is true for valid EC public keys' do
+      expect(ec_public_key?(valid_ec_public_key)).to be true
+    end
+
+    it 'is false for invalid EC public keys' do
+      expect(ec_public_key?('validBase64ButInvalidEcPublicKey')).to be false
+    end
+
+    it 'uses base64? predicate to ensure that it is base 64' do
+      expect(subject).to receive(:base64?).and_return(false)
+      expect(ec_public_key?('validbase64=')).to be false
+    end
+  end
+
+  describe '.pkcs7_signature?' do
+    def pkcs7_signature?(x); subject.pkcs7_signature?(x); end
+
+    it 'is true for valid PKCS7 signatures' do
+      valid_signature = <<~PEM
+        MIIKRwYJKoZIhvcNAQcCoIIKODCCCjQCAQExDzANBglghkgBZQMEAgEFADCC
+        AcIGCSqGSIb3DQEHAaCCAbMEggGvMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD
+        QgAE/2KR0tgjCI8ImkM1/EU+G0Lkvvty7iU5LMc0tUmMw/oAAUaszKlUYZ+K
+        3Nq6PwywyHLtr0ghpFJRDMslm3Fj264IocefXqQue93zm7qPdnyHLKzMuX9u
+        sJv8RLSivYB/EkumLwHeWJPIdb7jcVsV0qSuiOTOj3blEs4MJfO8cpGag0Nn
+        Eh6twRaAfnioiVn0g1jXEsi8oul7OIATJj8gsYJvTyom95eq9yYQYDl9ITAd
+        5rLrJ9oNxkR0G+tK7aDexnhBdBpQQPdLKQ4PJc009CBZlIe0ozMb/ubByoIf
+        IAmc2KGPUpsLN/+m1Q9LkIKFo78Zq/18/jvq2GO527yfq+7AuV1LQBOo5Mbm
+        Wh+sIWv964ix8iiCF13TrPaGC6AILM1rE2ZJQY/gicL6LK5s4ti61TP/Xc7s
+        Fq6bb5Na/I4LjDdGCoaZ3gyuuzzfbFg3tKUlAlti0gcOVRVl956oqRsgMnKH
+        QyUxMkV4SM6A+HEPfINMB/FB6FMG9lElUVm3vHkbqCozAQLKkWupxO7sGvy+
+        92CgggZ4MIICETCCAbegAwIBAgIBATAKBggqhkjOPQQDAjCBgDELMAkGA1UE
+        BhMCREsxFTATBgNVBAoMDFBlZGljZWwgSW5jLjEoMCYGA1UECwwfUGVkaWNl
+        bCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEwMC4GA1UEAwwnUGVkaWNlbCBB
+        cHBsaWNhdGlvbiBJbnRlZ3JhdGlvbiBDQSAtIEczMB4XDTE3MDEwMTAwMDAw
+        MFoXDTIwMDEwMTAwMDAwMFowYTELMAkGA1UEBhMCREsxFTATBgNVBAoMDFBl
+        ZGljZWwgSW5jLjEUMBIGA1UECwwLcE9TIFN5c3RlbXMxJTAjBgNVBAMMHGVj
+        Yy1zbXAtYnJva2VyLXNpZ25fVUM0LVBST0QwWTATBgcqhkjOPQIBBggqhkjO
+        PQMBBwNCAATF6GdRK7PsiDtSlPTejnXsDLKn6ILhJgqIm8LxwPUgCXTUAhO3
+        Mbn/Y8T0xK83eFTdT5oRY08fWM4JmoVAenpwo0AwPjAOBgNVHQ8BAf8EBAMC
+        B4AwHQYDVR0OBBYEFHfPaCMkdecS4AgH0nc6gUZJJ5u6MA0GCSqGSIb3Y2QG
+        HQQAMAoGCCqGSM49BAMCA0gAMEUCICtpCs+aQ1jQ3u12D0u/hstij1PAOP0A
+        /GMYnDpeEQ8EAiEA+7bj8qm4B3O43Ll8IdwyKza2oiVrw3Ch8cEpV6mM0UMw
+        ggIuMIIB1aADAgECAgEBMAoGCCqGSM49BAMCMG0xCzAJBgNVBAYTAkRLMRUw
+        EwYDVQQKDAxQZWRpY2VsIEluYy4xKDAmBgNVBAsMH1BlZGljZWwgQ2VydGlm
+        aWNhdGlvbiBBdXRob3JpdHkxHTAbBgNVBAMMFFBlZGljZWwgUm9vdCBDQSAt
+        IEczMB4XDTE3MDEwMTAwMDAwMFoXDTIwMDEwMTAwMDAwMFowgYAxCzAJBgNV
+        BAYTAkRLMRUwEwYDVQQKDAxQZWRpY2VsIEluYy4xKDAmBgNVBAsMH1BlZGlj
+        ZWwgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkxMDAuBgNVBAMMJ1BlZGljZWwg
+        QXBwbGljYXRpb24gSW50ZWdyYXRpb24gQ0EgLSBHMzBZMBMGByqGSM49AgEG
+        CCqGSM49AwEHA0IABASlf05UCs7jmvfRv0rhmqhTNAAZIk91T+k/mE1rho/X
+        2ET7Kx3hkNNYZ0auWym//EIC9StVdz6LcNwZOijaiJejUjBQMA8GA1UdEwEB
+        /wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBTT8DLx2cuH85ZO
+        vjMJjiAxPf7IPDAOBgoqhkiG92NkBgIOBAAwCgYIKoZIzj0EAwIDRwAwRAIg
+        AvtOT6CCV2O/bumwzY9S4Px4GHpPSFeuJJwPzVX8BbACIFDXkjBMyHRXrhLe
+        PhQNh1gH18X+8VINbLE2b26TrunFMIICLTCCAdOgAwIBAgICAsIwCgYIKoZI
+        zj0EAwIwbTELMAkGA1UEBhMCREsxFTATBgNVBAoMDFBlZGljZWwgSW5jLjEo
+        MCYGA1UECwwfUGVkaWNlbCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEdMBsG
+        A1UEAwwUUGVkaWNlbCBSb290IENBIC0gRzMwHhcNMTcwMTAxMDAwMDAwWhcN
+        MjAwMTAxMDAwMDAwWjBtMQswCQYDVQQGEwJESzEVMBMGA1UECgwMUGVkaWNl
+        bCBJbmMuMSgwJgYDVQQLDB9QZWRpY2VsIENlcnRpZmljYXRpb24gQXV0aG9y
+        aXR5MR0wGwYDVQQDDBRQZWRpY2VsIFJvb3QgQ0EgLSBHMzBZMBMGByqGSM49
+        AgEGCCqGSM49AwEHA0IABDp+ySLHlsaSkmIN9vqiPom0O7SKPvf5UWB2zQ99
+        avfHYFTLeW51+Or4/X/r6MakSAVVvaEDOmi7rQYrga98zSSjYzBhMA8GA1Ud
+        EwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBRXxyoMIIml
+        dfCobWDa0R1VhU012DAfBgNVHSMEGDAWgBRXxyoMIImldfCobWDa0R1VhU01
+        2DAKBggqhkjOPQQDAgNIADBFAiEA1PAFBb7d2UEvZSQy2FP8IDE+MX6tSDD2
+        sB+FQPIgkRgCIAJSb3Je7poRVDyABU47f8tuBCrX9fxIvkl7JfpXmhCDMYIB
+        2jCCAdYCAQEwgYYwgYAxCzAJBgNVBAYTAkRLMRUwEwYDVQQKDAxQZWRpY2Vs
+        IEluYy4xKDAmBgNVBAsMH1BlZGljZWwgQ2VydGlmaWNhdGlvbiBBdXRob3Jp
+        dHkxMDAuBgNVBAMMJ1BlZGljZWwgQXBwbGljYXRpb24gSW50ZWdyYXRpb24g
+        Q0EgLSBHMwIBATANBglghkgBZQMEAgEFAKCB5DAYBgkqhkiG9w0BCQMxCwYJ
+        KoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xODA1MDQwOTE3NTdaMC8GCSqG
+        SIb3DQEJBDEiBCBYcUX4dnxfr+/Y7v+JENQUa7Fw7uXxUD/mOIs+ccXRCjB5
+        BgkqhkiG9w0BCQ8xbDBqMAsGCWCGSAFlAwQBKjALBglghkgBZQMEARYwCwYJ
+        YIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDANBggqhkiG
+        9w0DAgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDAKBggqhkjOPQQDAgRG
+        MEQCIAeueGU9HiDaNkFRlQJT/6bv5CYtyF2MPHdeMNIRZIjDAiBYCW0KdJNa
+        DwLe7kuv8fxkKXVwBJgZlD3MdHtONCrzVQ==
+      PEM
+      valid_signature.gsub!(/\s/, '')
+
+      expect(pkcs7_signature?(valid_signature)).to be true
+    end
+
+    it 'is false for invalid PKCS7 signatures' do
+      expect(pkcs7_signature?('validbase64=')).to be false
+    end
+
+    it 'uses base64? predicate to ensure that it is base 64' do
+      expect(subject).to receive(:base64?).and_return(false)
+      expect(pkcs7_signature?('validbase64=')).to be false
     end
   end
 end
