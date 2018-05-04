@@ -68,41 +68,38 @@ module Pedicel
 
         predicates(Predicates)
         def self.messages
-          super.merge(en: { errors: DRY_CUSTOM_PREDICATE_ERRORS })
+          super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
         end
       end
 
       required(:data).filled(:str?, :base64?)
 
       required(:header).schema do
-        optional(:applicationData).filled(:str?, :hex?, :hexsha256?)
+        optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
 
-        optional(:ephemeralPublicKey).filled(:str?, :base64?, :ecPublicKey?)
+        optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
+
         optional(:wrappedKey).filled(:str?, :base64?)
 
-        rule('ephemeralPublicKey xor wrappedKey':
-             %i[ephemeralPublicKey wrappedKey]) do |e, w|
+        rule('ephemeralPublicKey xor wrappedKey': [:ephemeralPublicKey, :wrappedKey]) do |e, w|
           e.filled? ^ w.filled?
         end
 
-        required(:publicKeyHash).filled(:str?, :base64?, :base64sha256?)
+        required(:publicKeyHash).filled(:str?, :base64?, :base64_sha256?)
 
         required(:transactionId).filled(:str?, :hex?)
       end
 
-      required(:signature).filled(:str?, :base64?, :PKCS7Signature?)
+      required(:signature).filled(:str?, :base64?, :pkcs7_signature?)
 
       required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
     end
 
-    # rubocop:disable Metrics/BlockLength
     TokenDataSchema = Dry::Validation.Schema do
-      # rubocop:enable Metrics/BlockLength
-
       configure do
         predicates(Predicates)
         def self.messages
-          super.merge(en: { errors: DRY_CUSTOM_PREDICATE_ERRORS })
+          super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
         end
       end
 
@@ -118,22 +115,17 @@ module Pedicel
 
       required(:deviceManufacturerIdentifier).filled(:str?, :hex?)
 
-      required(:paymentDataType).filled(:str?,
-                                        included_in?: %w[3DSecure EMV])
+      required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
 
       required(:paymentData).schema do
         optional(:onlinePaymentCryptogram).filled(:str?, :base64?)
-        optional(:eciIndicator).filled(:str?, :ECI?)
+        optional(:eciIndicator).filled(:str?, :eci?)
 
         optional(:emvData).filled(:str?, :base64?)
         optional(:encryptedPINData).filled(:str?, :hex?)
       end
 
-      rule(
-        'paymentDataType affects paymentData':
-         [:paymentDataType, %i[paymentData onlinePaymentCryptogram]]
-      ) do |t, cryptogram|
-
+      rule('paymentDataType affects paymentData': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |t, cryptogram|
         t.eql?('3DSecure') > cryptogram.filled?
       end
     end
