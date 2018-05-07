@@ -8,8 +8,8 @@ Gem::Specification.new do |s|
   s.version  = Pedicel::VERSION
   s.author   = 'Clearhaus'
   s.email    = 'hello@clearhaus.com'
-  s.summary  = 'Backend and client part of Apple Pay'
-  s.homepage = 'https://github.com/clearhaus/pedicel-pay'
+  s.summary  = 'Decryption of Apple Pay payment tokens'
+  s.homepage = 'https://github.com/clearhaus/pedicel'
   s.license  = 'MIT'
 
   s.files = Dir.glob("lib/**/*.rb")
