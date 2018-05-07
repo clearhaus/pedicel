@@ -1,9 +1,6 @@
 require 'securerandom'
 require 'base64'
 
-require 'simplecov'
-SimpleCov.start 'rails'
-
 def ec_key_to_pkey_public_key(ec_key)
   # EC#public_key is not a PKey public key, but an EC point.
   pub = OpenSSL::PKey::EC.new(ec_key.group)
