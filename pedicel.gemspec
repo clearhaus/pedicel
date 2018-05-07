@@ -19,8 +19,8 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '~> 2.3'
   s.add_runtime_dependency 'aes256gcm_decrypt', '~> 0.0.2'
 
-  s.add_development_dependency 'rake'
+  s.add_development_dependency 'rake', '~> 12.3'
   s.add_development_dependency 'rspec', '~> 3.7'
   s.add_development_dependency 'pry', '~> 0.11'
-  s.add_development_dependency 'pedicel-pay'
+  s.add_development_dependency 'pedicel-pay', '~> 0.0.1'
 end
