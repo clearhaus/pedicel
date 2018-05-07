@@ -17,7 +17,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'dry-validation', '~> 0.11.1'
 
   s.required_ruby_version = '~> 2.3'
-  #s.required_ruby_version = ['< 2.4', '~> 2.3']
   s.add_runtime_dependency 'aes256gcm_decrypt', '~> 0.0.2'
 
   s.add_development_dependency 'rake'
