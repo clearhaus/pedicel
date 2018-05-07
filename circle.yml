@@ -1,7 +1,7 @@
 ---
 machine:
     environment:
-        RUBY_VERSIONS: 2.3.3p222
+        RUBY_VERSIONS: 2.3.3
 
 dependencies:
     override:
