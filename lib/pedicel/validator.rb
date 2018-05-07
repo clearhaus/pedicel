@@ -26,27 +26,30 @@ module Pedicel
         base64_sha256?:   'not base64-encoded SHA256',
       }.freeze
 
+      match_b = String.new.respond_to?(:match?) ? lambda{|s, re| s.match?(re)} : lambda{|s, re| !!(s =~ re)}
+      # Support Ruby 2.3, but use the faster #match? when available.
+
       predicate(:base64?) do |x|
         str?(x) &&
-          !!(x =~ /\A[=A-Za-z0-9+\/]*\z/) && # allowable chars
+          match_b.(x, /\A[=A-Za-z0-9+\/]*\z/) && # allowable chars
           x.length.remainder(4).zero? && # multiple of 4
-          !(x =~ /=[^$=]/) && # may only end with ='s
-          !(x =~ /===/) # at most 2 ='s
+          !match_b.(x, /=[^$=]/) && # may only end with ='s
+          !match_b.(x, /===/) # at most 2 ='s
       end
 
       #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
 
       predicate(:base64_sha256?) { |x| base64?(x) && Base64.decode64(x).length == 32 }
 
-      predicate(:hex?) { |x| str?(x) && x.match?(/\A[a-f0-9]*\z/i) }
+      predicate(:hex?) { |x| str?(x) && match_b.(x, /\A[a-f0-9]*\z/i) }
 
       predicate(:hex_sha256?) { |x| hex?(x) && x.length == 64 }
 
-      predicate(:pan?) { |x| str?(x) && x.match?(/\A[1-9][0-9]{11,18}\z/) }
+      predicate(:pan?) { |x| str?(x) && match_b.(x, /\A[1-9][0-9]{11,18}\z/) }
 
-      predicate(:yymmdd?) { |x| str?(x) && x.match?(/\A\d{6}\z/) }
+      predicate(:yymmdd?) { |x| str?(x) && match_b.(x, /\A\d{6}\z/) }
 
-      predicate(:eci?) { |x| str?(x) && x.match?(/\A\d{2}\z/) }
+      predicate(:eci?) { |x| str?(x) && match_b.(x, /\A\d{2}\z/) }
 
       predicate(:ec_public_key?) { |x| base64?(x) && OpenSSL::PKey::EC.new(Base64.decode64(x)).check_key rescue false }
 
