@@ -144,15 +144,22 @@ module Pedicel
       # The value for these marker OIDs doesn't matter, only their presence.
       leaf, intermediate, root = self.class.extract_certificates(signature: s)
       # Implicit since these are the ones extracted.
+      # The only certificate that will be allowed to be extracted other than the
+      # leaf and intermediate is the root.
 
       # 1.b
       # Ensure that the root CA is the Apple Root CA - G3. (...)
-      self.class.verify_root_certificate(trusted_root: trusted_root, root: root)
+      if root
+        self.class.verify_root_certificate(trusted_root: trusted_root, root: root)
+      #else
+        # root is not extracted from the signature, and thus, we trust the
+        # trusted root.
+      end
 
       # 1.c
       # Ensure that there is a valid X.509 chain of trust from the signature to
       # the root CA.
-      self.class.verify_x509_chain(root: root, intermediate: intermediate, leaf: leaf)
+      self.class.verify_x509_chain(root: trusted_root, intermediate: intermediate, leaf: leaf)
       # We "only" check the *certificate* chain (from leaf to root). Below (in
       # 1.d) is checked that the signature is created with the leaf.
 
@@ -170,31 +177,32 @@ module Pedicel
     end
 
     def self.extract_certificates(signature:, config: Pedicel.config)
-      leafs, intermediates, roots = [], [], []
+      leafs, intermediates, others = [], [], []
 
       signature.certificates.each do |certificate|
-        root = true
+        leaf_or_intermediate = false
+
         certificate.extensions.each do |extension|
           case extension.oid
           when config[:oids][:intermediate_certificate]
             intermediates << certificate
-            root = false
+            leaf_or_intermediate = true
             break
           when config[:oids][:leaf_certificate]
             leafs << certificate
-            root = false
+            leaf_or_intermediate = true
             break
           end
         end
 
-        roots << certificate if root
+        others << certificate unless leaf_or_intermediate
       end
 
       raise SignatureError, "no unique leaf certificate found (OID #{config[:oids][:leaf_certificate]})" unless leafs.length == 1
       raise SignatureError, "no unique intermediate certificate found (OID #{config[:oids][:intermediate_certificate]})" unless intermediates.length == 1
-      raise SignatureError, "no unique root certificate found" unless roots.length == 1
+      raise SignatureError, "too many certificates found in the signature: #{others.map(&:subject).join('; ')}" if others.length > 1
 
-      [leafs.first, intermediates.first, roots.first]
+      [leafs.first, intermediates.first, others.first]
     end
 
     def self.verify_root_certificate(root:, trusted_root:)

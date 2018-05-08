@@ -262,7 +262,7 @@ describe 'Pedicel::Base' do
     it 'errs if there are multiple certificates that are neither leaf nor intermediate' do
       signature.add_certificate(another_backend.ca_certificate)
 
-      expect{Pedicel::Base.extract_certificates(signature: signature)}.to raise_error(Pedicel::SignatureError, /no unique root/)
+      expect{Pedicel::Base.extract_certificates(signature: signature)}.to raise_error(Pedicel::SignatureError, /\Atoo many certificates found in the signature:/)
     end
   end
 
