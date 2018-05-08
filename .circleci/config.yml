@@ -5,6 +5,7 @@ jobs:
     docker:
       - image: ruby:2.3.3
     steps:
+      - checkout
       - run: bundle install
       - run: bundle exec rake test
 
