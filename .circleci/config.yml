@@ -8,9 +8,17 @@ jobs:
       - checkout
       - run: bundle install
       - run: bundle exec rake test
+  ruby237:
+    docker:
+      - image: ruby:2.3.7
+    steps:
+      - checkout
+      - run: bundle install
+      - run: bundle exec rake test
 
 workflows:
   version: 2
   build:
     jobs:
       - ruby233
+      - ruby237
