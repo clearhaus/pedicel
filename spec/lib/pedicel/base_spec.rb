@@ -79,7 +79,23 @@ describe 'Pedicel::Base' do
   end
 
   describe '#valid_signature?' do
-    it 'is correct'
+    it 'is true when verify_signature is truthy' do
+      expect(pedicel).to receive(:verify_signature).and_return(pedicel)
+
+      expect(pedicel.valid_signature?).to be true
+    end
+
+    it 'is false when verify_signature is falsey' do
+      expect(pedicel).to receive(:verify_signature).and_return(nil)
+
+      expect(pedicel.valid_signature?).to be false
+    end
+
+    it 'is false when verify_signature raises an error' do
+      expect(pedicel).to receive(:verify_signature).and_raise(Pedicel::SignatureError, 'boom')
+
+      expect(pedicel.valid_signature?).to be false
+    end
   end
 
   describe '#signing_time_ok?' do

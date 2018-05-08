@@ -108,7 +108,7 @@ module Pedicel
     public
 
     def valid_signature?(now: Time.now)
-      true if verify_signature(now: now)
+      !!verify_signature(now: now)
     rescue
       false
     end
