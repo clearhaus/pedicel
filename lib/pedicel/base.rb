@@ -1,11 +1,9 @@
-# frozen_string_literal: true
-
 require 'openssl'
 require 'base64'
 
 module Pedicel
-  class Base # rubocop:disable Metrics/ClassLength
-    SUPPORTED_VERSIONS = %i[EC_v1].freeze
+  class Base
+    SUPPORTED_VERSIONS = [:EC_v1].freeze
 
     def initialize(token, config: Pedicel.config)
       @token  = token
