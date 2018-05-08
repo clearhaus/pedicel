@@ -98,10 +98,6 @@ describe 'Pedicel::Base' do
     end
   end
 
-  describe '#signing_time_ok?' do
-    it 'is correct'
-  end
-
   let (:backend) do
     backend = PedicelPay::Backend.generate
     Pedicel.config.merge!(trusted_ca_pem: backend.ca_certificate.to_pem)

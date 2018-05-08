@@ -113,17 +113,6 @@ module Pedicel
       false
     end
 
-    def signing_time_ok?(now: Time.now, config: Pedicel.config)
-      raise SignatureError, 'no signature present' unless signature
-
-      s = OpenSSL::PKCS7.new(signature)
-      self.class.verify_signed_time(signature: s, now: now, config: config)
-
-      true
-    rescue
-      false
-    end
-
     def verify_signature(ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
       raise SignatureError, 'no signature present' unless signature
 
