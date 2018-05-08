@@ -1,0 +1,16 @@
+version: 2
+
+jobs:
+  ruby233:
+    docker:
+      - image: ruby:2.3.3
+    steps:
+      - checkout
+      - run: bundle install
+      - run: bundle exec rake test
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - ruby233
