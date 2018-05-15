@@ -6,9 +6,6 @@ module Pedicel
       Base64.decode64(@token['header']['ephemeralPublicKey'])
     end
 
-    # Decrypt self.encrypted_data() finding the key from either
-    # symmetric_key, og
-    #
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
       # Check for necessary parameters:
@@ -51,8 +48,6 @@ module Pedicel
                                merchant_id: merchant_id)
     end
 
-    # Extract the shared secret from one public key (the ephemeral) and one
-    # private key.
     def shared_secret(private_key:)
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)

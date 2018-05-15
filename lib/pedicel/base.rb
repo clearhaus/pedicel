@@ -10,14 +10,6 @@ module Pedicel
       @config = config
     end
 
-    def validate_content
-      raise VersionError, "unsupported version: #{version}" unless SUPPORTED_VERSIONS.include?(version)
-
-      raise SignatureError unless valid_signature?
-
-      true
-    end
-
     def version
       @token['version']&.to_sym
     end
