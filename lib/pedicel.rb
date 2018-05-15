@@ -41,7 +41,7 @@ module Pedicel
   }.freeze
 
   def self.config
-    @config ||= Marshal.load(Marshal.dump(DEFAULTS))
+    @config ||= Marshal.load(Marshal.dump(DEFAULTS)) # Deep dup.
   end
 
   def self.config=(other)
