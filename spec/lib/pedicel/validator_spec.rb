@@ -61,9 +61,9 @@ describe Pedicel::Validator do
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*must be a string/)
       end
 
-      it 'errs when data is not Base 64' do
+      it 'errs when data is not Base64' do
         token_h['data'] = '%'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base.*64/)
+        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base64/)
       end
     end
 
@@ -158,7 +158,7 @@ describe Pedicel::Validator do
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*must be a string/)
         end
 
-        it 'errs when not base 64' do
+        it 'errs when not Base64' do
           header_h['ephemeralPublicKey'] = '%'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*invalid base64/)
         end
@@ -223,7 +223,7 @@ describe Pedicel::Validator do
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*must be a string/)
         end
 
-        it 'errs when not base 64' do
+        it 'errs when not Base64' do
           header_h['publicKeyHash'] = '%'
           is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*invalid base64/)
         end
@@ -258,12 +258,12 @@ describe Pedicel::Validator::Predicates do
   describe '.base64?' do
     def base64?(x); subject.base64?(x); end
 
-    it 'true for valid base 64' do
+    it 'true for valid Base64' do
       expect(base64?('')).to eq(true)
       expect(base64?('validbase64=')).to eq(true)
     end
 
-    it 'false for invalid base 64' do
+    it 'false for invalid Base64' do
       expect(base64?(nil)).to be false
       expect(base64?('%')).to be false
       expect(base64?('fooo=')).to be false
@@ -274,14 +274,14 @@ describe Pedicel::Validator::Predicates do
   describe '.base64_sha256?' do
     def base64_sha256?(x); subject.base64_sha256?(x); end
 
-    it "true for valid base 64 encoded sha256's" do
+    it "true for valid Base64 encoded SHA-256's" do
       expect(base64_sha256?('0byNO6Svx+EJYSy3Osvd2sBSyTAlqh+ClC7au33rgqE=')).to be true
       expect(base64_sha256?('0000000000000000000000000000000000000000000=')).to be true
       expect(base64_sha256?('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=')).to be true
       expect(base64_sha256?('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF=')).to be true
     end
 
-    it 'uses base64? predicate and is non-strictly evaluating if it is a sha256' do
+    it 'uses base64? predicate and is non-strictly evaluating if it is a SHA-256' do
       expect(subject).to receive(:base64?).and_return(true)
       # Non-strict test: should ignore the extra ='s since the above stub allows anything.
       expect(base64_sha256?('0000000000000000000000000000000000000000000======')).to be true
@@ -290,7 +290,7 @@ describe Pedicel::Validator::Predicates do
       expect(base64_sha256?('0000000000000000000000000000000000000000000=')).to be false
     end
 
-    it 'false for non-sha256 that are base 64 encoded' do
+    it 'false for non-SHA-256 that are Base64 encoded' do
       expect(base64_sha256?('too short')).to be false
       expect(base64_sha256?("t#{'o'*50} long")).to be false
     end
@@ -316,7 +316,7 @@ describe Pedicel::Validator::Predicates do
   describe '.hex_sha256?' do
     def hex_sha256?(x); subject.hex_sha256?(x); end
 
-    it "true for valid hex encoded sha256's" do
+    it "true for valid hex encoded SHA-256's" do
       expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be true
       expect(hex_sha256?('D1BC8D3BA4AFC7E109612CB73ACBDDDAC052C93025AA1F82942EDABB7DEB82A1')).to be true
       expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddAC052C93025AA1F82942EDABB7DEB82A1')).to be true
@@ -331,7 +331,7 @@ describe Pedicel::Validator::Predicates do
       expect(hex_sha256?('d1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
     end
 
-    it 'false for non-sha256 that are hex encoded' do
+    it 'false for non-SHA-256 that are hex encoded' do
       expect(hex_sha256?('aedf')).to be false
       expect(hex_sha256?('1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
       expect(hex_sha256?('Fd1bc8d3ba4afc7e109612cb73acbdddac052c93025aa1f82942edabb7deb82a1')).to be false
@@ -420,7 +420,7 @@ describe Pedicel::Validator::Predicates do
       expect(ec_public_key?('validBase64ButInvalidEcPublicKey')).to be false
     end
 
-    it 'uses base64? predicate to ensure that it is base 64' do
+    it 'uses base64? predicate to ensure that it is Base64' do
       expect(subject).to receive(:base64?).and_return(false)
       expect(ec_public_key?('validbase64=')).to be false
     end
@@ -500,7 +500,7 @@ describe Pedicel::Validator::Predicates do
       expect(pkcs7_signature?('validbase64=')).to be false
     end
 
-    it 'uses base64? predicate to ensure that it is base 64' do
+    it 'uses base64? predicate to ensure that it is Base64' do
       expect(subject).to receive(:base64?).and_return(false)
       expect(pkcs7_signature?('validbase64=')).to be false
     end
