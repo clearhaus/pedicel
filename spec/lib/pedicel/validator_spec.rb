@@ -50,11 +50,6 @@ describe Pedicel::Validator do
     context 'wrong data' do
       it 'errs when data is missing' do
         token_h.delete('data')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:/)
-      end
-
-      it 'errs when data is missing' do
-        token_h.delete('data')
         is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*missing/)
       end
 
