@@ -239,6 +239,8 @@ describe 'Pedicel::Base' do
         is_expected.to be_truthy
       end
 
+      it 'handles that once certificate can be both intermediate and leaf'
+
       it 'extracts leaf, intermediate, and root' do
         is_expected.to eq([backend.leaf_certificate, backend.intermediate_certificate, backend.ca_certificate])
       end

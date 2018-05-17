@@ -166,11 +166,9 @@ module Pedicel
           when config[:oids][:intermediate_certificate]
             intermediates << certificate
             leaf_or_intermediate = true
-            break
           when config[:oids][:leaf_certificate]
             leafs << certificate
             leaf_or_intermediate = true
-            break
           end
         end
 
