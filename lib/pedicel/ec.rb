@@ -8,12 +8,12 @@ module Pedicel
 
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
                 ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
-      # Check for necessary parameters:
+      # Check for necessary parameters.
       unless symmetric_key || ((merchant_id || certificate) && private_key)
         raise ArgumentError, 'missing parameters'
       end
 
-      # Check for uniqueness among the supplied parameters used directly here:
+      # Check for uniqueness among the supplied parameters used directly here.
       if symmetric_key && (merchant_id || certificate || private_key)
         raise ArgumentError, "leave out other parameters when supplying 'symmetric_key'"
       end
@@ -28,12 +28,12 @@ module Pedicel
     end
 
     def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
-      # Check for necessary parameters:
+      # Check for necessary parameters.
       unless (shared_secret || private_key) && (merchant_id || certificate)
         raise ArgumentError, 'missing parameters'
       end
 
-      # Check for uniqueness among the supplied parameters:
+      # Check for uniqueness among the supplied parameters.
       if shared_secret && private_key
         raise ArgumentError, "leave out 'private_key' when supplying 'shared_secret'"
       elsif merchant_id && certificate
@@ -99,13 +99,13 @@ module Pedicel
 
       sha256 = Digest::SHA256.new
 
-      # Step 3:
+      # Step 3
       sha256 << "\x00\x00\x00\x01"
 
-      # Z:
+      # Z
       sha256 << shared_secret
 
-      # OtherInfo:
+      # OtherInfo
       # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
       sha256 << "\x0d" + 'id-aes256-GCM' # AlgorithmID
       sha256 << 'Apple' # PartyUInfo
