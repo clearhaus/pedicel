@@ -121,18 +121,17 @@ module Pedicel
       # 1.a
       # Ensure that the certificates contain the correct custom OIDs: (...).
       # The value for these marker OIDs doesn't matter, only their presence.
-      leaf, intermediate, root = self.class.extract_certificates(signature: s)
+      leaf, intermediate, other = self.class.extract_certificates(signature: s)
       # Implicit since these are the ones extracted.
-      # The only certificate that will be allowed to be extracted other than the
-      # leaf and intermediate is the root.
 
       # 1.b
       # Ensure that the root CA is the Apple Root CA - G3. (...)
-      if root
-        self.class.verify_root_certificate(trusted_root: trusted_root, root: root)
+      if other
+        self.class.verify_root_certificate(trusted_root: trusted_root, root: other)
+        # Allow no other certificate than the root.
       #else
-        # root is not extracted from the signature, and thus, we trust the
-        # trusted root.
+        # no other certificate is not extracted from the signature, and thus, we
+        # trust the trusted root.
       end
 
       # 1.c
