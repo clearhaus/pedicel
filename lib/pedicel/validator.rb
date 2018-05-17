@@ -37,6 +37,8 @@ module Pedicel
           !match_b.(x, /===/) # at most 2 ='s
       end
 
+      # We should figure out how strict we should be. Hopefully we can discard
+      # the above base64? predicate and use the following simpler one:
       #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
 
       predicate(:base64_sha256?) { |x| base64?(x) && Base64.decode64(x).length == 32 }
