@@ -26,8 +26,8 @@ module Pedicel
         base64_sha256?:   'not base64-encoded SHA256',
       }.freeze
 
-      match_b = String.new.respond_to?(:match?) ? lambda{|s, re| s.match?(re)} : lambda{|s, re| !!(s =~ re)}
       # Support Ruby 2.3, but use the faster #match? when available.
+      match_b = String.new.respond_to?(:match?) ? lambda{|s, re| s.match?(re)} : lambda{|s, re| !!(s =~ re)}
 
       predicate(:base64?) do |x|
         str?(x) &&
