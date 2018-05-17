@@ -39,7 +39,7 @@ describe Pedicel::Validator do
         is_expected.to_not raise_error
       end
 
-      it 'is truthy a valid token' do
+      it 'is truthy for a valid token' do
         expect(Pedicel::Validator.validate_token(token.to_hash)).to be_truthy
       end
     end
