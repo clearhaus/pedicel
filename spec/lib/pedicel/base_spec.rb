@@ -286,7 +286,7 @@ describe 'Pedicel::Base' do
     end
 
     it 'does not err when the certificates are equal' do
-      expect{Pedicel::Base.verify_root_certificate(root: backend.ca_certificate, trusted_root: backend.ca_certificate}.to_not raise_error
+      expect{Pedicel::Base.verify_root_certificate(root: backend.ca_certificate, trusted_root: backend.ca_certificate)}.to_not raise_error
     end
 
     it 'is truthy when the certificates are equal' do
