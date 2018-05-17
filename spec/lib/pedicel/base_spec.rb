@@ -370,6 +370,11 @@ describe 'Pedicel::Base' do
     # see Apple's Root CA certificate sign a payment token. Thus, we accept that
     # this theoretically acceptable chain is not accepted (because it will never
     # happen).
+    it 'errs when root is used for all 3 certificates' do
+      params[:intermediate] = params[:root]
+      params[:leaf]         = params[:root]
+      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
+    end
 
     it 'errs if intermediate is not signed by root' do
       params[:root] = PedicelPay::Backend.generate.ca_certificate
