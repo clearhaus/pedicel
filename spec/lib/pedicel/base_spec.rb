@@ -289,8 +289,8 @@ describe 'Pedicel::Base' do
       expect{Pedicel::Base.verify_root_certificate(root: backend.ca_certificate, trusted_root: backend.ca_certificate)}.to_not raise_error
     end
 
-    it 'is truthy when the certificates are equal' do
-      expect(Pedicel::Base.verify_root_certificate(root: backend.ca_certificate, trusted_root: backend.ca_certificate)).to be_truthy
+    it 'is true when the certificates are equal' do
+      expect(Pedicel::Base.verify_root_certificate(root: backend.ca_certificate, trusted_root: backend.ca_certificate)).to be true
     end
   end
 
@@ -403,8 +403,8 @@ describe 'Pedicel::Base' do
       expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, /invalid chain/)
     end
 
-    it 'is truthy when the chain is good' do
-      expect(Pedicel::Base.verify_x509_chain(params)).to be_truthy
+    it 'is true when the chain is good' do
+      expect(Pedicel::Base.verify_x509_chain(params)).to be true
     end
   end
 
@@ -429,8 +429,8 @@ describe 'Pedicel::Base' do
       expect{Pedicel::Base.verify_signed_time(signature: signature, now: now+limit+1)}.to raise_error(Pedicel::SignatureError)
     end
 
-    it 'is truthy when all checks are good' do
-      expect(Pedicel::Base.verify_signed_time(signature: signature, now: now)).to be_truthy
+    it 'is true when all checks are good' do
+      expect(Pedicel::Base.verify_signed_time(signature: signature, now: now)).to be true
     end
   end
 end
