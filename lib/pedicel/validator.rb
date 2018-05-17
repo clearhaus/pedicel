@@ -143,7 +143,7 @@ module Pedicel
 
     def self.valid_token?(token)
       validate_token(token)
-    rescue
+    rescue TokenFormatError
       false
     end
 
@@ -157,7 +157,7 @@ module Pedicel
 
     def self.valid_token_data?(token_data)
       validate_token_data(token_data)
-    rescue
+    rescue TokenDataFormatError
       false
     end
 
