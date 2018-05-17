@@ -44,8 +44,7 @@ module Pedicel
 
       merchant_id ||= self.class.merchant_id(certificate: certificate)
 
-      self.class.symmetric_key(shared_secret: shared_secret,
-                               merchant_id: merchant_id)
+      self.class.symmetric_key(shared_secret: shared_secret, merchant_id: merchant_id)
     end
 
     def shared_secret(private_key:)
