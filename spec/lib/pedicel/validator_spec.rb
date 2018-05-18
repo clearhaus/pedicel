@@ -252,6 +252,255 @@ describe Pedicel::Validator do
       end
     end
   end
+
+  describe '.valid_token_data?' do
+    it 'relies on validate_token_data' do
+      expect(Pedicel::Validator).to receive(:validate_token_data).with(nil).and_return(true)
+
+      expect(Pedicel::Validator.valid_token_data?(nil)).to eq(true)
+    end
+
+    it 'relies on validate_token_data' do
+      expect(Pedicel::Validator).to receive(:validate_token_data).with(nil).and_raise(Pedicel::Validator::TokenDataFormatError, 'boom')
+
+      expect(Pedicel::Validator.valid_token_data?(nil)).to eq(false)
+    end
+  end
+
+  describe '.validate_token_data' do
+    let (:token_data_h) { token.unencrypted_data.to_hash }
+    let (:method) { lambda{|x| Pedicel::Validator.validate_token_data(x)} }
+    let (:error) { Pedicel::Validator::TokenDataFormatError }
+
+    context 'can be happy' do
+      it 'does not err on valid token data' do
+        expect{method.call(token_data_h)}.to_not raise_error
+      end
+
+      it 'is truthy for valid token data' do
+        expect(method.call(token_data_h)).to be true
+      end
+    end
+
+    context 'wrong data' do
+      it 'errs when required data is missing' do
+        required_keys = [
+          :applicationPrimaryAccountNumber,
+          :applicationExpirationDate,
+          :currencyCode,
+          :transactionAmount,
+          :deviceManufacturerIdentifier,
+          :paymentDataType,
+          :paymentData,
+        ]
+
+        required_keys.each do |required_key|
+          inadequate_data = token_data_h.reject{|key, _| key == required_key}
+          message = "#{required_key}: [\"is missing\"]"
+
+          expect{method.call(inadequate_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when a value required to be a string is not a string' do
+        string_keys = [
+          :applicationPrimaryAccountNumber,
+          :applicationExpirationDate,
+          :currencyCode,
+          :cardholderName,
+          :deviceManufacturerIdentifier,
+          :paymentDataType,
+        ]
+
+        string_keys.each do |string_key|
+          invalid_data = token_data_h.merge(string_key => 42)
+          message = "#{string_key}: [\"must be a string\"]"
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+
+        payment_data_string_keys = [
+          :onlinePaymentCryptogram,
+          :eciIndicator,
+          :emvData,
+          :encryptedPINData,
+        ]
+
+        payment_data_string_keys.each do |string_key|
+          payment_data = token_data_h[:paymentData]
+          invalid_payment_data = payment_data.merge(string_key => 42)
+          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+          message = "paymentData: {:#{string_key}=>[\"must be a string\"]}"
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when applicationPrimaryAccountNumber is not a PAN' do
+        key = :applicationPrimaryAccountNumber
+        message = "#{key}: [\"invalid pan\"]"
+
+        invalid_values = [
+          '0123123412341234',
+          '1234567890',
+          '12345678901234567890',
+          '1234A23412341234',
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when applicationExpirationDate is not a date' do
+        key = :applicationExpirationDate
+        message = "#{key}: [\"invalid date format YYMMDD\"]"
+
+        invalid_values = [
+          '12345',
+          '1234567',
+          '1A3456',
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when currencyCode is not a currency code' do
+        key = :currencyCode
+        message = "#{key}: [\"is in invalid format\"]"
+
+        invalid_values = [
+          '11',
+          '11A',
+          '1111',
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when transactionAmount is not an integer' do
+        key = :transactionAmount
+        message = "#{key}: [\"must be an integer\"]"
+
+        invalid_values = [
+          'abc',
+          '42',
+          [42],
+          { abc: 42 },
+          true,
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when deviceManufacturerIdentifier or encryptedPINData is not hex' do
+        key = :deviceManufacturerIdentifier
+        message = "#{key}: [\"invalid hex\"]"
+
+        invalid_values = [
+          '42-42',
+          '42Z',
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+
+        key = :encryptedPINData
+        message = "paymentData: {:#{key}=>[\"invalid hex\"]}"
+
+        payment_data = token_data_h[:paymentData]
+
+        invalid_values.each do |invalid_value|
+          invalid_payment_data = payment_data.merge(key => invalid_value)
+          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when paymentDataType is unsupported' do
+        key = :paymentDataType
+        message = "#{key}: [\"must be one of: 3DSecure, EMV\"]"
+
+        invalid_values = [
+          '3dsecure',
+          'emv',
+          '3D Secure',
+          '3DSecure2',
+          'EMVCo',
+        ]
+
+        invalid_values.each do |invalid_value|
+          invalid_data = token_data_h.merge(key => invalid_value)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+
+      it 'errs when onlinePaymentCryptogram or emvData is not base64' do
+        payment_data_base64_keys = [
+          :onlinePaymentCryptogram,
+          :emvData,
+        ]
+
+        payment_data = token_data_h[:paymentData]
+
+        payment_data_base64_keys.each do |base64_key|
+          message = "paymentData: {:#{base64_key}=>[\"invalid base64\"]}"
+
+          invalid_values = [
+            '%',
+            'fooo=',
+            'f===',
+          ]
+
+          invalid_values.each do |invalid_value|
+            invalid_payment_data = payment_data.merge(base64_key => invalid_value)
+            invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+
+            expect{method.call(invalid_data)}.to raise_error(error, message)
+          end
+        end
+      end
+
+      it 'errs when eciIndicator is invalid' do
+        key = :eciIndicator
+        message = "paymentData: {:#{key}=>[\"not an ECI indicator\"]}"
+
+        invalid_values = [
+          '1',
+          '123',
+          '1A',
+        ]
+
+        payment_data = token_data_h[:paymentData]
+
+        invalid_values.each do |invalid_value|
+          invalid_payment_data = payment_data.merge(key => invalid_value)
+          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+
+          expect{method.call(invalid_data)}.to raise_error(error, message)
+        end
+      end
+    end
+  end
 end
 
 describe Pedicel::Validator::Predicates do
