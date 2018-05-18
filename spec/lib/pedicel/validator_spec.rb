@@ -25,7 +25,7 @@ describe Pedicel::Validator do
     end
 
     it 'relies on validate_token' do
-      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_raise(Pedicel::Validator::Error, 'boom')
+      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_raise(Pedicel::Validator::TokenFormatError, 'boom')
 
       expect(Pedicel::Validator.valid_token?(nil)).to eq(false)
     end
