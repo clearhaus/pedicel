@@ -135,7 +135,7 @@ describe "Spreedly's gala Ruby library's test case" do
 
   describe 'decryption with private key and certificate' do
     it 'decrypts correctly' do
-      d = pedicel.decrypt(private_key: private_key, certificate: certificate, now: Time.new(2014,10,27,19,51,43))
+      d = pedicel.decrypt(private_key: private_key, certificate: certificate, now: Time.new(2014,10,27,19,51,43,'+00:00'))
 
       expect(d).to eq(decrypted_data)
     end
@@ -153,7 +153,7 @@ describe "Spreedly's gala Ruby library's test case" do
     end
 
     it 'can decrypt using the symmetric key' do
-      expect(pedicel.decrypt(symmetric_key: symmetric_key, now: Time.new(2014,10,27,19,51,43))).to eq(decrypted_data)
+      expect(pedicel.decrypt(symmetric_key: symmetric_key, now: Time.new(2014,10,27,19,51,43,'+00:00'))).to eq(decrypted_data)
     end
   end
 
