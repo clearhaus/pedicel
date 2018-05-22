@@ -7,47 +7,44 @@ module Pedicel
     end
 
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
-                ca_certificate_pem: Pedicel.config[:apple_root_ca_g3_cert_pem], now: Time.now)
-      raise ArgumentError 'invalid argument combination' unless \
-        !symmetric_key.nil? ^ ((!merchant_id.nil? ^ !certificate.nil?) && !private_key.nil?)
-      # .-------------------'--------. .----------'----. .-------------''---.
-      # | symmetric_key can be       | | merchant_id   | | Both private_key |
-      # | derived from private_key   | | (byte string) | | and merchant_id  |
-      # | and the shared_secret---   | | can be        | | is necessary to  |
-      # | which can be derived from  | | derived from  | | derive the       |
-      # | the private_key and the    | | the public    | | symmetric key    |
-      # | token's ephemeralPublicKey | | certificate   | '------------------'
-      # '----------------------------' '---------------'
+                ca_certificate_pem: @config[:trusted_ca_pem], now: Time.now)
+      # Check for necessary parameters.
+      unless symmetric_key || ((merchant_id || certificate) && private_key)
+        raise ArgumentError, 'missing parameters'
+      end
 
-      if private_key
-        symmetric_key = symmetric_key(private_key: private_key,
-                                      certificate: certificate,
-                                      merchant_id: merchant_id)
+      # Check for uniqueness among the supplied parameters used directly here.
+      if symmetric_key && (merchant_id || certificate || private_key)
+        raise ArgumentError, "leave out other parameters when supplying 'symmetric_key'"
       end
 
       verify_signature(ca_certificate_pem: ca_certificate_pem, now: now)
+
+      symmetric_key ||= symmetric_key(private_key: private_key,
+                                      merchant_id: merchant_id,
+                                      certificate: certificate)
+
       decrypt_aes(key: symmetric_key)
     end
 
-    def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
-      raise ArgumentError 'invalid argument combination' unless \
-        (!shared_secret.nil? ^ !private_key.nil?) && (!merchant_id.nil? ^ !certificate.nil?)
-      # .--------------------'.  .----------------'|  .-----------------'--.
-      # | shared_secret can   |  | shared_secret   |  | merchant_id (byte  |
-      # | be derived from the |  | and merchant_id |  | string can be      |
-      # | private_key and the |  | is necessary to |  | derived from the   |
-      # | ephemeralPublicKey  |  | derive the      |  | public certificate |
-      # '---------------------'  | symmetric_key   |  '--------------------'
-      #                          '-----------------'
+    def symmetric_key(private_key: nil, merchant_id: nil, certificate: nil)
+      # Check for necessary parameters.
+      unless private_key && (merchant_id || certificate)
+        raise ArgumentError, 'missing parameters'
+      end
 
-      shared_secret = shared_secret(private_key: private_key) if private_key
-      merchant_id = self.class.merchant_id(certificate: certificate) if certificate
+      # Check for uniqueness among the supplied parameters.
+      if merchant_id && certificate
+        raise ArgumentError, "leave out 'certificate' when supplying 'merchant_id'"
+      end
+
+      shared_secret = shared_secret(private_key: private_key)
+
+      merchant_id ||= self.class.merchant_id(certificate: certificate)
 
       self.class.symmetric_key(shared_secret: shared_secret, merchant_id: merchant_id)
     end
 
-    # Extract the shared secret from one public key (the ephemeral) and one
-    # private key.
     def shared_secret(private_key:)
       begin
         privkey = OpenSSL::PKey::EC.new(private_key)
@@ -58,19 +55,21 @@ module Pedicel
       begin
         pubkey = OpenSSL::PKey::EC.new(ephemeral_public_key).public_key
       rescue => e
-        raise EcKeyError, "invalid format of ephemeralPublicKey (from token) for EC: #{e.message}"
+        raise EcKeyError, "invalid ephemeralPublicKey (from token) for EC: #{e.message}"
       end
 
       unless privkey.group == pubkey.group
-        raise EcKeyError,
-          "private_key curve '#{privkey.group.curve_name}' differ from " \
-          "ephemeralPublicKey (from token) curve '#{pubkey.group.curve_name}'"
+        raise EcKeyError, "private_key curve '%s' differs from token ephemeralPublicKey curve '%s'" %
+                          [privkey.group.curve_name, pubkey.group.curve_name]
       end
 
       privkey.dh_compute_key(pubkey)
     end
 
     def self.symmetric_key(merchant_id:, shared_secret:)
+      raise ArgumentError, 'merchant_id must be a SHA256' unless merchant_id.is_a?(String) && merchant_id.length == 32
+      raise ArgumentError, 'shared_secret must be a string' unless shared_secret.is_a?(String)
+
       # http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
       # Section 5.8.1.1, The Single-Step KDF Specification.
       #
@@ -92,18 +91,18 @@ module Pedicel
       # >    hashlen` leftmost bits of `K(reps)`.
       # > 7. Return `K(1) || K(2) || ... || K(reps-1) || K_Last`.
       #
-      # Digest::SHA256 will do the calculations when we throw Z and OtherInfo into
-      # the digest.
+      # Digest::SHA256 will do the calculations when we throw Z and OtherInfo
+      # into the digest.
 
       sha256 = Digest::SHA256.new
 
-      # Step 3:
+      # Step 3
       sha256 << "\x00\x00\x00\x01"
 
-      # Z:
+      # Z
       sha256 << shared_secret
 
-      # OtherInfo:
+      # OtherInfo
       # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
       sha256 << "\x0d" + 'id-aes256-GCM' # AlgorithmID
       sha256 << 'Apple' # PartyUInfo
@@ -112,7 +111,7 @@ module Pedicel
       sha256.digest
     end
 
-    def self.merchant_id(certificate:)
+    def self.merchant_id(certificate:, config: Pedicel::DEFAULT_CONFIG)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
@@ -120,11 +119,11 @@ module Pedicel
       end
 
       merchant_id_hex =
-        cert.
-          extensions.
-          find { |x| x.oid == Pedicel.config[:oids][:merchant_identifier_field] }&.
-          value&. # Hex encoded Merchant ID plus perhaps extra non-hex chars.
-          delete("^[0-9a-fA-F]") # Remove non-hex chars.
+        cert
+        .extensions
+        .find { |x| x.oid == config[:oid_merchant_identifier_field] }
+        &.value # Hex encoded Merchant ID plus perhaps extra non-hex chars.
+        &.delete('^[0-9a-fA-F]') # Remove non-hex chars.
 
       raise CertificateError, 'no merchant identifier in certificate' unless merchant_id_hex
 
@@ -163,6 +162,8 @@ module Pedicel
       unless signature.verify(certificates, store, message, flags)
         raise SignatureError, 'signature does not match the message'
       end
+
+      true
     end
   end
 end

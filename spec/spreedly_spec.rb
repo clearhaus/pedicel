@@ -129,7 +129,7 @@ describe "Spreedly's gala Ruby library's test case" do
       'paymentData'                     => {
         'onlinePaymentCryptogram' => 'Af9x/QwAA/DjmU65oyc1MAABAAA=',
         'eciIndicator'            => '5',
-      }
+      },
     }.to_json
   end
 
@@ -166,14 +166,6 @@ describe "Spreedly's gala Ruby library's test case" do
       ss = pedicel.shared_secret(private_key: private_key)
 
       expect(ss).to eq(shared_secret)
-    end
-  end
-
-  context 'deriving symmetric key from shared secret' do
-    it 'works' do
-      sk = pedicel.symmetric_key(shared_secret: shared_secret, certificate: certificate)
-
-      expect(sk).to eq(symmetric_key)
     end
   end
 end
