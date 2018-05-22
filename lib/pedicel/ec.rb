@@ -27,20 +27,18 @@ module Pedicel
       decrypt_aes(key: symmetric_key)
     end
 
-    def symmetric_key(shared_secret: nil, private_key: nil, merchant_id: nil, certificate: nil)
+    def symmetric_key(private_key: nil, merchant_id: nil, certificate: nil)
       # Check for necessary parameters.
-      unless (shared_secret || private_key) && (merchant_id || certificate)
+      unless private_key && (merchant_id || certificate)
         raise ArgumentError, 'missing parameters'
       end
 
       # Check for uniqueness among the supplied parameters.
-      if shared_secret && private_key
-        raise ArgumentError, "leave out 'private_key' when supplying 'shared_secret'"
-      elsif merchant_id && certificate
+      if merchant_id && certificate
         raise ArgumentError, "leave out 'certificate' when supplying 'merchant_id'"
       end
 
-      shared_secret ||= shared_secret(private_key: private_key)
+      shared_secret = shared_secret(private_key: private_key)
 
       merchant_id ||= self.class.merchant_id(certificate: certificate)
 
