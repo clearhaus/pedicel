@@ -3,6 +3,14 @@ require 'pedicel/ec'
 require 'pedicel/rsa'
 
 module Pedicel
+  class Error < StandardError; end
+  class TokenFormatError < Error; end
+  class SignatureError < Error; end
+  class VersionError < Error; end
+  class CertificateError < Error; end
+  class EcKeyError < Error; end
+  class AesKeyError < Error; end
+
   APPLE_ROOT_CA_G3_CERT_PEM = <<~PEM
     -----BEGIN CERTIFICATE-----
     MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
@@ -22,33 +30,11 @@ module Pedicel
   PEM
   APPLE_ROOT_CA_G3_CERT_PEM.freeze
 
-  class Error < StandardError; end
-  class TokenFormatError < Error; end
-  class SignatureError < Error; end
-  class VersionError < Error; end
-  class CertificateError < Error; end
-  class EcKeyError < Error; end
-  class AesKeyError < Error; end
-
-  DEFAULTS = {
-    oids: {
-      intermediate_certificate:  '1.2.840.113635.100.6.2.14',
-      leaf_certificate:          '1.2.840.113635.100.6.29',
-      merchant_identifier_field: '1.2.840.113635.100.6.32',
-    }.freeze,
+  DEFAULT_CONFIG = {
+    oid_intermediate_certificate:  '1.2.840.113635.100.6.2.14',
+    oid_leaf_certificate:          '1.2.840.113635.100.6.29',
+    oid_merchant_identifier_field: '1.2.840.113635.100.6.32',
     replay_threshold_seconds: 3 * 60,
     trusted_ca_pem: APPLE_ROOT_CA_G3_CERT_PEM,
   }.freeze
-
-  def self.config
-    @config ||= Marshal.load(Marshal.dump(DEFAULTS)) # Deep dup.
-  end
-
-  def self.config=(other)
-    @config = other
-  end
-
-  def self.reset_config
-    @config = nil
-  end
 end

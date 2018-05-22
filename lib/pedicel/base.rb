@@ -5,7 +5,9 @@ module Pedicel
   class Base
     SUPPORTED_VERSIONS = [:EC_v1].freeze
 
-    def initialize(token, config: Pedicel.config)
+    attr_accessor :config
+
+    def initialize(token, config: Pedicel::DEFAULT_CONFIG)
       @token  = token
       @config = config
     end
@@ -154,7 +156,7 @@ module Pedicel
       self
     end
 
-    def self.extract_certificates(signature:, config: Pedicel.config)
+    def self.extract_certificates(signature:, config: Pedicel::DEFAULT_CONFIG)
       leafs, intermediates, others = [], [], []
 
       signature.certificates.each do |certificate|
@@ -162,10 +164,10 @@ module Pedicel
 
         certificate.extensions.each do |extension|
           case extension.oid
-          when config[:oids][:intermediate_certificate]
+          when config[:oid_intermediate_certificate]
             intermediates << certificate
             leaf_or_intermediate = true
-          when config[:oids][:leaf_certificate]
+          when config[:oid_leaf_certificate]
             leafs << certificate
             leaf_or_intermediate = true
           end
@@ -174,8 +176,8 @@ module Pedicel
         others << certificate unless leaf_or_intermediate
       end
 
-      raise SignatureError, "no unique leaf certificate found (OID #{config[:oids][:leaf_certificate]})" unless leafs.length == 1
-      raise SignatureError, "no unique intermediate certificate found (OID #{config[:oids][:intermediate_certificate]})" unless intermediates.length == 1
+      raise SignatureError, "no unique leaf certificate found (OID #{config[:oid_leaf_certificate]})" unless leafs.length == 1
+      raise SignatureError, "no unique intermediate certificate found (OID #{config[:oid_intermediate_certificate]})" unless intermediates.length == 1
       raise SignatureError, "too many certificates found in the signature: #{others.map(&:subject).join('; ')}" if others.length > 1
 
       [leafs.first, intermediates.first, others.first]
@@ -217,7 +219,7 @@ module Pedicel
       true
     end
 
-    def self.verify_signed_time(signature:, now:, config: Pedicel.config)
+    def self.verify_signed_time(signature:, now:, config: Pedicel::DEFAULT_CONFIG)
       # Inspect the CMS signing time of the signature, as defined by section
       # 11.3 of RFC 5652. If the time signature and the transaction time differ
       # by more than a few minutes, it's possible that the token is a replay
