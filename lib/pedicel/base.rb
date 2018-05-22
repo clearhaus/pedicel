@@ -1,13 +1,16 @@
 require 'openssl'
 require 'base64'
+require 'pedicel/validator'
 
 module Pedicel
   class Base
     SUPPORTED_VERSIONS = [:EC_v1].freeze
 
-    attr_accessor :config
+    attr_reader :config
 
     def initialize(token, config: Pedicel::DEFAULT_CONFIG)
+      Validator.validate_token(token)
+
       @token  = token
       @config = config
     end
