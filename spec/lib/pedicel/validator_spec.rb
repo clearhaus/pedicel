@@ -268,8 +268,8 @@ describe Pedicel::Validator do
   end
 
   describe '.validate_token_data' do
-    let (:token_data_h) { token.unencrypted_data.to_hash }
-    let (:method) { lambda{|x| Pedicel::Validator.validate_token_data(x)} }
+    let (:token_data_h) { JSON.parse(token.unencrypted_data.to_hash.to_json) }
+    let (:method) { lambda { |x| Pedicel::Validator.validate_token_data(x) } }
     let (:error) { Pedicel::Validator::TokenDataFormatError }
 
     context 'can be happy' do
@@ -285,13 +285,13 @@ describe Pedicel::Validator do
     context 'wrong data' do
       it 'errs when required data is missing' do
         required_keys = [
-          :applicationPrimaryAccountNumber,
-          :applicationExpirationDate,
-          :currencyCode,
-          :transactionAmount,
-          :deviceManufacturerIdentifier,
-          :paymentDataType,
-          :paymentData,
+          'applicationPrimaryAccountNumber',
+          'applicationExpirationDate',
+          'currencyCode',
+          'transactionAmount',
+          'deviceManufacturerIdentifier',
+          'paymentDataType',
+          'paymentData',
         ]
 
         required_keys.each do |required_key|
@@ -304,12 +304,12 @@ describe Pedicel::Validator do
 
       it 'errs when a value required to be a string is not a string' do
         string_keys = [
-          :applicationPrimaryAccountNumber,
-          :applicationExpirationDate,
-          :currencyCode,
-          :cardholderName,
-          :deviceManufacturerIdentifier,
-          :paymentDataType,
+          'applicationPrimaryAccountNumber',
+          'applicationExpirationDate',
+          'currencyCode',
+          'cardholderName',
+          'deviceManufacturerIdentifier',
+          'paymentDataType',
         ]
 
         string_keys.each do |string_key|
@@ -320,24 +320,24 @@ describe Pedicel::Validator do
         end
 
         payment_data_string_keys = [
-          :onlinePaymentCryptogram,
-          :eciIndicator,
-          :emvData,
-          :encryptedPINData,
+          'onlinePaymentCryptogram',
+          'eciIndicator',
+          'emvData',
+          'encryptedPINData',
         ]
 
         payment_data_string_keys.each do |string_key|
-          payment_data = token_data_h[:paymentData]
+          payment_data = token_data_h['paymentData']
           invalid_payment_data = payment_data.merge(string_key => 42)
-          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
-          message = "paymentData: {:#{string_key}=>[\"must be a string\"]}"
+          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
+          message = "paymentData: {\"#{string_key}\"=>[\"must be a string\"]}"
 
           expect{method.call(invalid_data)}.to raise_error(error, message)
         end
       end
 
       it 'errs when applicationPrimaryAccountNumber is not a PAN' do
-        key = :applicationPrimaryAccountNumber
+        key = 'applicationPrimaryAccountNumber'
         message = "#{key}: [\"invalid pan\"]"
 
         invalid_values = [
@@ -355,7 +355,7 @@ describe Pedicel::Validator do
       end
 
       it 'errs when applicationExpirationDate is not a date' do
-        key = :applicationExpirationDate
+        key = 'applicationExpirationDate'
         message = "#{key}: [\"invalid date format YYMMDD\"]"
 
         invalid_values = [
@@ -372,7 +372,7 @@ describe Pedicel::Validator do
       end
 
       it 'errs when currencyCode is not a currency code' do
-        key = :currencyCode
+        key = 'currencyCode'
         message = "#{key}: [\"is in invalid format\"]"
 
         invalid_values = [
@@ -389,7 +389,7 @@ describe Pedicel::Validator do
       end
 
       it 'errs when transactionAmount is not an integer' do
-        key = :transactionAmount
+        key = 'transactionAmount'
         message = "#{key}: [\"must be an integer\"]"
 
         invalid_values = [
@@ -397,6 +397,7 @@ describe Pedicel::Validator do
           '42',
           [42],
           { abc: 42 },
+          { 'abc' => 42 },
           true,
         ]
 
@@ -408,7 +409,7 @@ describe Pedicel::Validator do
       end
 
       it 'errs when deviceManufacturerIdentifier or encryptedPINData is not hex' do
-        key = :deviceManufacturerIdentifier
+        key = 'deviceManufacturerIdentifier'
         message = "#{key}: [\"invalid hex\"]"
 
         invalid_values = [
@@ -422,21 +423,21 @@ describe Pedicel::Validator do
           expect{method.call(invalid_data)}.to raise_error(error, message)
         end
 
-        key = :encryptedPINData
-        message = "paymentData: {:#{key}=>[\"invalid hex\"]}"
+        key = 'encryptedPINData'
+        message = "paymentData: {\"#{key}\"=>[\"invalid hex\"]}"
 
-        payment_data = token_data_h[:paymentData]
+        payment_data = token_data_h['paymentData']
 
         invalid_values.each do |invalid_value|
           invalid_payment_data = payment_data.merge(key => invalid_value)
-          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
 
           expect{method.call(invalid_data)}.to raise_error(error, message)
         end
       end
 
       it 'errs when paymentDataType is unsupported' do
-        key = :paymentDataType
+        key = 'paymentDataType'
         message = "#{key}: [\"must be one of: 3DSecure, EMV\"]"
 
         invalid_values = [
@@ -456,14 +457,14 @@ describe Pedicel::Validator do
 
       it 'errs when onlinePaymentCryptogram or emvData is not base64' do
         payment_data_base64_keys = [
-          :onlinePaymentCryptogram,
-          :emvData,
+          'onlinePaymentCryptogram',
+          'emvData',
         ]
 
-        payment_data = token_data_h[:paymentData]
+        payment_data = token_data_h['paymentData']
 
         payment_data_base64_keys.each do |base64_key|
-          message = "paymentData: {:#{base64_key}=>[\"invalid base64\"]}"
+          message = "paymentData: {\"#{base64_key}\"=>[\"invalid base64\"]}"
 
           invalid_values = [
             '%',
@@ -473,7 +474,7 @@ describe Pedicel::Validator do
 
           invalid_values.each do |invalid_value|
             invalid_payment_data = payment_data.merge(base64_key => invalid_value)
-            invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+            invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
 
             expect{method.call(invalid_data)}.to raise_error(error, message)
           end
@@ -481,8 +482,8 @@ describe Pedicel::Validator do
       end
 
       it 'errs when eciIndicator is invalid' do
-        key = :eciIndicator
-        message = "paymentData: {:#{key}=>[\"not an ECI indicator\"]}"
+        key = 'eciIndicator'
+        message = "paymentData: {\"#{key}\"=>[\"not an ECI indicator\"]}"
 
         invalid_values = [
           '1',
@@ -490,11 +491,11 @@ describe Pedicel::Validator do
           '1A',
         ]
 
-        payment_data = token_data_h[:paymentData]
+        payment_data = token_data_h['paymentData']
 
         invalid_values.each do |invalid_value|
           invalid_payment_data = payment_data.merge(key => invalid_value)
-          invalid_data = token_data_h.merge(:paymentData => invalid_payment_data)
+          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
 
           expect{method.call(invalid_data)}.to raise_error(error, message)
         end
