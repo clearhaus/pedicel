@@ -106,26 +106,26 @@ module Pedicel
         end
       end
 
-      required(:applicationPrimaryAccountNumber).filled(:str?, :pan?)
+      required('applicationPrimaryAccountNumber').filled(:str?, :pan?)
 
-      required(:applicationExpirationDate).filled(:str?, :yymmdd?)
+      required('applicationExpirationDate').filled(:str?, :yymmdd?)
 
-      required(:currencyCode).filled(:str?, format?: /\A[0-9]{3}\z/)
+      required('currencyCode').filled(:str?, format?: /\A[0-9]{3}\z/)
 
-      required(:transactionAmount).filled(:int?)
+      required('transactionAmount').filled(:int?)
 
-      optional(:cardholderName).filled(:str?)
+      optional('cardholderName').filled(:str?)
 
-      required(:deviceManufacturerIdentifier).filled(:str?, :hex?)
+      required('deviceManufacturerIdentifier').filled(:str?, :hex?)
 
-      required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
+      required('paymentDataType').filled(:str?, included_in?: %w[3DSecure EMV])
 
-      required(:paymentData).schema do
-        optional(:onlinePaymentCryptogram).filled(:str?, :base64?)
-        optional(:eciIndicator).filled(:str?, :eci?)
+      required('paymentData').schema do
+        optional('onlinePaymentCryptogram').filled(:str?, :base64?)
+        optional('eciIndicator').filled(:str?, :eci?)
 
-        optional(:emvData).filled(:str?, :base64?)
-        optional(:encryptedPINData).filled(:str?, :hex?)
+        optional('emvData').filled(:str?, :base64?)
+        optional('encryptedPINData').filled(:str?, :hex?)
       end
 
       rule('paymentDataType affects paymentData': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |t, cryptogram|
