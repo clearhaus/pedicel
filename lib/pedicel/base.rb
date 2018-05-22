@@ -184,7 +184,7 @@ module Pedicel
     end
 
     def self.verify_root_certificate(root:, trusted_root:)
-      raise SignatureError, 'root certificate is not trusted' unless root == trusted_root
+      raise SignatureError, 'root certificate is not trusted' unless root.to_der == trusted_root.to_der
 
       true
     end
