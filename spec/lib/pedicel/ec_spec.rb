@@ -140,14 +140,6 @@ describe 'Pedicel::EC' do
       Pedicel::EC.new(token.to_hash)
     end
 
-    it 'extracts the symmetric key using the shared secret and certificate' do
-      expect(pedicel.symmetric_key(shared_secret: ss, certificate: client.certificate)).to eq(symmetric_key)
-    end
-
-    it 'extracts the symmetric key using the shared secret and merchant id' do
-      expect(pedicel.symmetric_key(shared_secret: ss, merchant_id: client.merchant_id)).to eq(symmetric_key)
-    end
-
     it 'extracts the symmetric key using the private key and certificate' do
       expect(pedicel.symmetric_key(private_key: client.key, certificate: client.certificate)).to eq(symmetric_key)
     end
