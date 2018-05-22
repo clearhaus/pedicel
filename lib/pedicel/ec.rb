@@ -113,7 +113,7 @@ module Pedicel
       sha256.digest
     end
 
-    def self.merchant_id(certificate:, config: Pedicel.config)
+    def self.merchant_id(certificate:, config: Pedicel::DEFAULT_CONFIG)
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
@@ -123,7 +123,7 @@ module Pedicel
       merchant_id_hex =
         cert
         .extensions
-        .find { |x| x.oid == config[:oids][:merchant_identifier_field] }
+        .find { |x| x.oid == config[:oid_merchant_identifier_field] }
         &.value # Hex encoded Merchant ID plus perhaps extra non-hex chars.
         &.delete('^[0-9a-fA-F]') # Remove non-hex chars.
 

@@ -98,14 +98,7 @@ describe 'Pedicel::Base' do
     end
   end
 
-  let (:backend) do
-    backend = PedicelPay::Backend.generate
-    Pedicel.config.merge!(trusted_ca_pem: backend.ca_certificate.to_pem)
-
-    backend
-  end
-
-  after (:all) { Pedicel.config.merge!(trusted_ca_pem: Pedicel::APPLE_ROOT_CA_G3_CERT_PEM) }
+  let (:backend) { PedicelPay::Backend.generate }
 
   let (:client) { backend.generate_client }
 
@@ -114,7 +107,9 @@ describe 'Pedicel::Base' do
   let (:pedicel) do
     backend.encrypt_and_sign(token, recipient: client)
 
-    Pedicel::EC.new(token.to_hash)
+    config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
+
+    Pedicel::EC.new(token.to_hash, config: config)
   end
 
   describe 'Pedicel::Base.verify_signature' do
@@ -183,8 +178,8 @@ describe 'Pedicel::Base' do
 
       it "uses the config's :trusted_ca_pem" do
         backend # Have the certificates created first.
-        trusted_root = OpenSSL::X509::Certificate.new(Pedicel.config[:trusted_ca_pem])
-        expect(Pedicel::Base).to receive(:verify_root_certificate).with(hash_including(trusted_root: trusted_root))
+
+        expect(Pedicel::Base).to receive(:verify_root_certificate).with(hash_including(trusted_root: backend.ca_certificate))
 
         pedicel.verify_signature
       end
@@ -202,31 +197,28 @@ describe 'Pedicel::Base' do
   describe 'Pedicel::Base.extract_certificates' do
     let (:signature) { OpenSSL::PKCS7.new(pedicel.signature) }
 
-    before (:each) { Pedicel.config.merge!(trusted_ca_pem: backend.ca_certificate.to_pem) }
-    after  (:each) { Pedicel.reset_config }
-
     context 'errors' do
-      subject { lambda { Pedicel::Base.extract_certificates(signature: signature) } }
+      subject { lambda { Pedicel::Base.extract_certificates(signature: signature, config: pedicel.config) } }
 
       it 'does not err when all checks are good' do
         is_expected.to_not raise_error
       end
 
       it 'errs if there is no leaf OID' do
-        Pedicel.config[:oids][:leaf_certificate] = 'invalid oid'
+        pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
 
         is_expected.to raise_error(Pedicel::SignatureError, /no.*leaf.*found/)
       end
 
       it 'errs if there is no intermediate OID' do
-        Pedicel.config[:oids][:intermediate_certificate] = 'invalid oid'
+        pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
         is_expected.to raise_error(Pedicel::SignatureError, /no.*intermediate.*found/)
       end
 
       it 'errs if there are neither a leaf nor an intermediate OID' do
-        Pedicel.config[:oids][:leaf_certificate] = 'invalid oid'
-        Pedicel.config[:oids][:intermediate_certificate] = 'invalid oid'
+        pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
+        pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
         is_expected.to raise_error(Pedicel::SignatureError, /no.*(leaf|intermediate).*found/)
       end
@@ -417,7 +409,7 @@ describe 'Pedicel::Base' do
       expect{Pedicel::Base.verify_signed_time(signature: signature, now: now)}.to_not raise_error
     end
 
-    let (:limit) { Pedicel.config[:replay_threshold_seconds] }
+    let (:limit) { pedicel.config[:replay_threshold_seconds] }
 
     it 'errs if the signature is too new' do
       expect{Pedicel::Base.verify_signed_time(signature: signature, now: now-limit)}.to_not raise_error

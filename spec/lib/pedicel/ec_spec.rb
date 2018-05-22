@@ -2,14 +2,7 @@ require 'pedicel/ec'
 require 'pedicel-pay'
 
 describe 'Pedicel::EC' do
-  let (:backend) do
-    backend = PedicelPay::Backend.generate
-    Pedicel.config.merge!(trusted_ca_pem: backend.ca_certificate.to_pem)
-
-    backend
-  end
-
-  after (:all) { Pedicel.config.merge!(trusted_ca_pem: Pedicel::APPLE_ROOT_CA_G3_CERT_PEM) }
+  let (:backend) { PedicelPay::Backend.generate }
 
   let (:client) { backend.generate_client }
 
@@ -18,7 +11,9 @@ describe 'Pedicel::EC' do
   let (:pedicel) do
     backend.encrypt_and_sign(token, recipient: client)
 
-    Pedicel::EC.new(token.to_hash)
+    config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
+
+    Pedicel::EC.new(token.to_hash, config: config)
   end
 
   describe '#decrypt' do
@@ -28,6 +23,7 @@ describe 'Pedicel::EC' do
       backend.encrypt_and_sign(token, recipient: client, shared_secret: ss, ephemeral_pubkey: epk)
 
       pedicel = Pedicel::EC.new(token.to_hash)
+      pedicel.config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
 
       symmetric_key = Pedicel::EC.symmetric_key(
         shared_secret: ss,
@@ -265,7 +261,7 @@ describe 'Pedicel::EC' do
     end
 
     it 'errs if certificate has no merchant ID with the given OID' do
-      config = {oids: {merchant_identifier_field: 'wrong oid'}}
+      config = { oid_merchant_identifier_field: 'wrong oid' }
       expect{Pedicel::EC.merchant_id(certificate: client.certificate, config: config)}.to raise_error(Pedicel::CertificateError, /no merchant identifier/)
     end
   end
