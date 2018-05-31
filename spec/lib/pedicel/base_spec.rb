@@ -231,10 +231,74 @@ describe 'Pedicel::Base' do
         is_expected.to be_truthy
       end
 
-      it 'handles that once certificate can be both intermediate and leaf'
-
       it 'extracts leaf, intermediate, and root' do
         is_expected.to eq([backend.leaf_certificate, backend.intermediate_certificate, backend.ca_certificate])
+      end
+
+      it 'handles that once certificate can be both intermediate and leaf', me:true do
+        def create_special_certificate(ca_key, ca_certificate, config, oids)
+          key = OpenSSL::PKey::EC.new(PedicelPay::EC_CURVE)
+          key.generate_key
+
+          cert = OpenSSL::X509::Certificate.new
+          # https://www.ietf.org/rfc/rfc5280.txt -> Section 4.1, search for "v3(2)".
+          cert.version = 2
+          cert.serial = 1
+          cert.subject = config[:subject][:intermediate]
+          cert.issuer = ca_certificate.subject
+          cert.public_key = PedicelPay::Helper.ec_key_to_pkey_public_key(key)
+          cert.not_before = config[:valid].min
+          cert.not_after = config[:valid].max
+
+          ef = OpenSSL::X509::ExtensionFactory.new
+          ef.subject_certificate = cert
+          ef.issuer_certificate = ca_certificate
+
+          # According to https://tools.ietf.org/html/rfc5280#section-4.2.1.9,
+          # CA:TRUE must be set in order to allow signing using this
+          # intermediate certificate.
+          cert.add_extension(ef.create_extension('basicConstraints', 'CA:TRUE', true))
+
+          cert.add_extension(ef.create_extension('keyUsage', 'keyCertSign, cRLSign', true))
+          cert.add_extension(ef.create_extension('subjectKeyIdentifier', 'hash', false))
+
+          oids.each do |oid|
+            cert.add_extension(OpenSSL::X509::Extension.new(oid, ''))
+          end
+
+          cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
+
+          [key, cert]
+        end
+
+        c = PedicelPay.config
+        oids = [ c[:oid][:intermediate_certificate], c[:oid][:leaf_certificate] ]
+        backend.leaf_key, backend.leaf_certificate = create_special_certificate(backend.ca_key, backend.ca_certificate, c, oids)
+
+        expect(backend).to receive(:sign) do |token|
+          message = [
+            PedicelPay::Helper.ec_key_to_pkey_public_key(token.header.ephemeral_pubkey).to_der,
+            token.encrypted_data,
+            token.header.transaction_id,
+            token.header.data_hash
+          ].compact.join
+
+          signature = OpenSSL::PKCS7.sign(
+            backend.leaf_certificate,
+            backend.leaf_key,
+            message,
+            [backend.ca_certificate], # NOTICE! No intermediate in the chain!
+            OpenSSL::PKCS7::BINARY # Handle 0x00 correctly.
+          )
+
+          token.signature = Base64.strict_encode64(signature.to_der)
+
+          token
+        end
+
+        signature = OpenSSL::PKCS7.new(pedicel.signature)
+
+        expect(Pedicel::Base.extract_certificates(signature: signature)).to eq([backend.leaf_certificate, backend.leaf_certificate, backend.ca_certificate])
       end
     end
   end
