@@ -235,7 +235,7 @@ describe 'Pedicel::Base' do
         is_expected.to eq([backend.leaf_certificate, backend.intermediate_certificate, backend.ca_certificate])
       end
 
-      it 'handles that once certificate can be both intermediate and leaf', me:true do
+      it 'handles that one certificate can be both intermediate and leaf' do
         def create_special_certificate(ca_key, ca_certificate, config, oids)
           key = OpenSSL::PKey::EC.new(PedicelPay::EC_CURVE)
           key.generate_key
