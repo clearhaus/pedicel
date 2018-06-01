@@ -277,7 +277,7 @@ describe Pedicel::Validator do
         expect{method.call(token_data_h)}.to_not raise_error
       end
 
-      it 'is truthy for valid token data' do
+      it 'is true for valid token data' do
         expect(method.call(token_data_h)).to be true
       end
     end
