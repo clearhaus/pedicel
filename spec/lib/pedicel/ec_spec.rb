@@ -108,7 +108,7 @@ describe 'Pedicel::EC' do
 
     it 'errs if application_data has been changed' do
       backend.encrypt_and_sign(token, recipient: client)
-      token.header.data_hash = OpenSSL::Digest::SHA256.new('foobar').digest
+      token.header.data_hash = OpenSSL::Digest::SHA256.new('foobar').hexdigest
       pedicel = Pedicel::EC.new(token.to_hash)
 
       expect{pedicel.validate_signature(signature: signature, leaf: backend.leaf_certificate)}.to raise_error(Pedicel::SignatureError, /signature.*not match.* message/)
