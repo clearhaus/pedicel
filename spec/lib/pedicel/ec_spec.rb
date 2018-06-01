@@ -22,8 +22,8 @@ describe 'Pedicel::EC' do
 
       backend.encrypt_and_sign(token, recipient: client, shared_secret: ss, ephemeral_pubkey: epk)
 
-      pedicel = Pedicel::EC.new(token.to_hash)
-      pedicel.config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
+      config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
+      pedicel = Pedicel::EC.new(token.to_hash, config: config)
 
       symmetric_key = Pedicel::EC.symmetric_key(
         shared_secret: ss,
