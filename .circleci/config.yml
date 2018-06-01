@@ -1,20 +1,26 @@
 version: 2
 
+common_steps: &common_steps
+  - checkout
+  - run:
+      name: Prepare environment
+      command: |
+        apt-get update
+        apt-get install -y --no-install-recommends libssl-dev
+        bundle install
+  - run:
+      name: Test
+      command: bundle exec rake test
+
 jobs:
   ruby233:
     docker:
       - image: ruby:2.3.3
-    steps:
-      - checkout
-      - run: bundle install
-      - run: bundle exec rake test
+    steps: *common_steps
   ruby237:
     docker:
       - image: ruby:2.3.7
-    steps:
-      - checkout
-      - run: bundle install
-      - run: bundle exec rake test
+    steps: *common_steps
 
 workflows:
   version: 2
