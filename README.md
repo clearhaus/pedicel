@@ -11,37 +11,44 @@ This Ruby gem will help you handle an Apple Pay `PKPaymentToken`.
 apple_pay_payment_token_hash = JSON.parse(apple_pay_payment_token_json)
 
 # Instantiate.
-# Validates the format of the Apple Pay payment token; raises an
-# Pedicel::Validator::Error if the format is invalid.
+# Validates the content of the Apple Pay payment token according to step 1 of
+# https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
+# A Pedicel::Validator::Error is raised if the content is invalid.
 pedicel = Pedicel::EC.new(apple_pay_payment_token_hash)
 
 # Decrypt using the symmetric key directly.
-# The symmetric key `sk` is derived from the private key and either the
-# merchant ID directly or the merchant certificate.
+# The symmetric key `sk` is derived from the Payment Processing Certificate's
+# private key and either the merchant ID directly or the Payment Processing
+# Certificate.
 data = pedicel.decrypt(symmetric_key: sk)
 
-# Decrypt using the merchant private key and merchant certificate.
-# The merchant private key `pk` and merchant certificate `c` are generated
-# during the Apple Pay merchant sign-up.
+# Decrypt using the Payment Processing Certificate's private key and Payment
+# Processing Certificate.
+# The Payment Processing Certificate `c` and the associated private key `pk` are
+# generated during the Apple Pay merchant sign-up.
 data = pedicel.decrypt(private_key: pk, certificate: c)
 
-# Decrypt using the merchant private key and merchant ID.
-# The merchant private key `pk` and merchant ID `mid` are generated during the
-# Apple Pay merchant sign-up.
+# Decrypt using the Payment Processing Certificate's private key and
+# merchant ID.
+# The Payment Processing Certificate's private key `pk` and merchant ID `mid`
+# are generated during the Apple Pay merchant sign-up.
 data = pedicel.decrypt(private_key: pk, merchant_id: mid)
 
-# Validate the decrypted data; raises an Pedicel::Validator::Error if the
-# format is invalid.
+# Validate the decrypted payment data; raises a Pedicel::Validator::Error if
+# the format is invalid.
 Pedicel::Validator.validate_token_data(data)
 
-# Extract the symmetric key for another party to decrypt (without compromising
-# your private key).
+# Extract the symmetric key for this particular token for another party to
+# decrypt (without compromising your private key).
 sk = pedicel.symmetric_key(private_key: pk, certificate: c)
 # or
 sk = pedicel.symmetric_key(private_key: pk, merchant_id: mid)
 ```
 
-## Complete test using `pedicel-pay`
+## Example
+
+Creating keys, certificates, CSRs, do signing, etc. is a tad cumbersome, so we
+use the gem `pedicel-pay` for this.
 
 ```ruby
 require 'pedicel-pay'
