@@ -21,6 +21,7 @@ module Pedicel
         eci?:             'must be an ECI',
         hex_sha256?:      'must be a hex-encoded SHA256',
         base64_sha256?:   'must be a base64-encoded SHA256',
+        iso4217_numeric?: 'must be an ISO 4217 numeric code',
       }.freeze
 
       # Support Ruby 2.3, but use the faster #match? when available.
@@ -53,6 +54,8 @@ module Pedicel
       predicate(:ec_public_key?) { |x| base64?(x) && OpenSSL::PKey::EC.new(Base64.decode64(x)).check_key rescue false }
 
       predicate(:pkcs7_signature?) { |x| base64?(x) && !!OpenSSL::PKCS7.new(Base64.decode64(x)) rescue false }
+
+      predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
     end
 
     TokenSchema = Dry::Validation.Schema do
@@ -107,7 +110,7 @@ module Pedicel
 
       required('applicationExpirationDate').filled(:str?, :yymmdd?)
 
-      required('currencyCode').filled(:str?, format?: /\A[0-9]{3}\z/)
+      required('currencyCode').filled(:str?, :iso4217_numeric?)
 
       required('transactionAmount').filled(:int?)
 
