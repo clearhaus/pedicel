@@ -12,15 +12,15 @@ module Pedicel
       include Dry::Logic::Predicates
 
       CUSTOM_PREDICATE_ERRORS = {
-        base64?:          'invalid base64',
-        hex?:             'invalid hex',
-        pan?:             'invalid pan',
-        yymmdd?:          'invalid date format YYMMDD',
-        ec_public_key?:   'is not an EC public key',
-        pkcs7_signature?: 'is not a PKCS7 Signature',
-        eci?:             'not an ECI indicator',
-        hex_sha256?:      'not hex-encoded SHA256',
-        base64_sha256?:   'not base64-encoded SHA256',
+        base64?:          'must be base64',
+        hex?:             'must be hex',
+        pan?:             'must be a pan',
+        yymmdd?:          'must be formatted YYMMDD',
+        ec_public_key?:   'must be an EC public key',
+        pkcs7_signature?: 'must be a PKCS7 Signature',
+        eci?:             'must be an ECI',
+        hex_sha256?:      'must be a hex-encoded SHA256',
+        base64_sha256?:   'must be a base64-encoded SHA256',
       }.freeze
 
       # Support Ruby 2.3, but use the faster #match? when available.
