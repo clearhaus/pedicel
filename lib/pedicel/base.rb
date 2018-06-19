@@ -9,7 +9,7 @@ module Pedicel
     attr_reader :config
 
     def initialize(token, config: Pedicel::DEFAULT_CONFIG)
-      Validator.validate_token(token)
+      Validator::Token.new(token).validate
 
       @token  = token
       @config = config

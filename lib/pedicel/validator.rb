@@ -3,13 +3,10 @@ require 'base64'
 require 'openssl'
 
 module Pedicel
-  # Validation class for Apple Pay Payment Token and associated data:
+  # Validations for Apple Pay Payment Token and associated data:
   # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
   # This purposefully only does syntactic validation (as opposed to semantic).
-  class Validator
-    class Error < StandardError; end
-    class TokenFormatError < Error; end
-    class TokenDataFormatError < Error; end
+  module Validator
 
     module Predicates
       include Dry::Logic::Predicates
@@ -133,36 +130,42 @@ module Pedicel
       end
     end
 
-    def self.validate_token(token)
-      validation = TokenSchema.call(token)
+    class Base
+      class Error < StandardError; end
 
-      raise TokenFormatError, format_errors(validation) if validation.failure?
+      def validate
+        @validation = @schema.call(@input)
 
-      true
+        raise Error if @validation.failure?
+
+        true
+      end
+
+      def valid?
+        validate
+      rescue Error
+        false
+      end
+
+      def errors
+        valid? unless @validation
+
+        @validation.errors
+      end
     end
 
-    def self.valid_token?(token)
-      validate_token(token)
-    rescue TokenFormatError
-      false
+    class Token < Base
+      def initialize(input)
+        @input = input
+        @schema = TokenSchema
+      end
     end
 
-    def self.validate_token_data(token_data)
-      validation = TokenDataSchema.call(token_data)
-
-      raise TokenDataFormatError, format_errors(validation) if validation.failure?
-
-      true
-    end
-
-    def self.valid_token_data?(token_data)
-      validate_token_data(token_data)
-    rescue TokenDataFormatError
-      false
-    end
-
-    def self.format_errors(validation)
-      validation.errors.map{|key, msg| "#{key}: #{msg}"}.join('; ')
+    class TokenData < Base
+      def initialize(input)
+        @input = input
+        @schema = TokenDataSchema
+      end
     end
   end
 end
