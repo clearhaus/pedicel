@@ -17,274 +17,303 @@ describe Pedicel::Validator do
     token
   end
 
-  describe '.valid_token?' do
-    it 'relies on validate_token' do
-      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_return(true)
+  describe Pedicel::Validator::Token do
+    let(:validator) { Pedicel::Validator::Token.new(token.to_hash) }
 
-      expect(Pedicel::Validator.valid_token?(nil)).to eq(true)
-    end
-
-    it 'relies on validate_token' do
-      expect(Pedicel::Validator).to receive(:validate_token).with(nil).and_raise(Pedicel::Validator::TokenFormatError, 'boom')
-
-      expect(Pedicel::Validator.valid_token?(nil)).to eq(false)
-    end
-  end
-
-  describe '.validate_token' do
-    context 'can be happy' do
-      subject { lambda { Pedicel::Validator.validate_token(token.to_hash) } }
-
-      it 'does not err on a valid token' do
-        is_expected.to_not raise_error
-      end
-
-      it 'is truthy for a valid token' do
-        expect(Pedicel::Validator.validate_token(token.to_hash)).to be_truthy
+    describe '#valid?' do
+      it 'relies on #validate' do
+        return_value = 'return_value'
+        expect(validator).to receive(:validate).and_return(return_value)
+        expect(validator.valid?).to equal return_value
       end
     end
 
-    let (:token_h) { token.to_hash }
-    subject { lambda { Pedicel::Validator.validate_token(token_h) } }
+    describe '#validate' do
+      context 'can be happy' do
+        subject { lambda { validator.validate } }
 
-    context 'wrong data' do
-      it 'errs when data is missing' do
-        token_h.delete('data')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*missing/)
-      end
-
-      it 'errs when data is not a string' do
-        token_h['data'] = [1,2,3]
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*must be a string/)
-
-        token_h['data'] = { :'a string as a hash key' => 'a string in a hash value' }
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*must be a string/)
-      end
-
-      it 'errs when data is not Base64' do
-        token_h['data'] = '%'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /data:.*base64/)
-      end
-    end
-
-    context 'signature' do
-      it 'errs when invalid' do
-        token_h['signature'] = 'invalid signature'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature/)
-      end
-
-      it 'errs when missing' do
-        token_h.delete('signature')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*missing/)
-      end
-
-      it 'errs when not a string' do
-        token_h['signature'] = 123
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*must be a string/)
-      end
-
-      it 'errs when not a hex string' do
-        token_h['signature'] = 'not hex'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /signature.*invalid base64/)
-      end
-    end
-
-    context 'version' do
-      it 'errs when invalid' do
-        token_h['version'] = 'invalid version'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version/)
-      end
-
-      it 'errs when missing' do
-        token_h.delete('version')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*missing/)
-      end
-
-      it 'errs when not a strign' do
-        token_h['version'] = 123
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*must be a string/)
-      end
-
-      it 'errs when not a supported version' do
-        token_h['version'] = 'EC_v0'
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /version.*must be one of/)
-      end
-    end
-
-    context 'header' do
-      let (:header_h) { token_h['header'] }
-
-      it 'errs when missing' do
-        token_h.delete('header')
-        is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /header.*missing/)
-      end
-
-      it 'errs when not a hash' do
-        ['asdf', [], 123].each do |invalid|
-          token_h['header'] = invalid
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /header.*hash/)
-        end
-      end
-
-      context 'applicationData' do
-        it 'errs when invalid' do
-          header_h['applicationData'] = 'invalid applicationData'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData/)
-        end
-
-        it 'does not err when missing' do
-          header_h.delete('applicationData')
+        it 'does not err on a valid token' do
           is_expected.to_not raise_error
         end
 
-        it 'errs when not a string' do
-          header_h['applicationData'] = 123
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData.*must be a string/)
-        end
-
-        it 'errs when not a hex string' do
-          header_h['applicationData'] = 'not hex'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /applicationData.*invalid hex/)
+        it 'is truthy for a valid token' do
+          expect(validator.validate).to be_truthy
         end
       end
 
-      context 'ephemeralPublicKey' do
+      let(:token_h) { token.to_hash }
+      let(:validator) { Pedicel::Validator::Token.new(token_h) }
+      subject { lambda { validator.validate } }
+      let(:e) { validator.errors.to_s }
+
+      context 'wrong data' do
+        it 'errs when data is missing' do
+          token_h.delete('data')
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/data.*missing/)
+        end
+
+        it 'errs when data is not a string' do
+          token_h['data'] = [1,2,3]
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/data.*must be a string/)
+
+          token_h['data'] = { :'a string as a hash key' => 'a string in a hash value' }
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/data.*must be a string/)
+        end
+
+        it 'errs when data is not Base64' do
+          token_h['data'] = '%'
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/data.*base64/)
+        end
+      end
+
+      context 'signature' do
         it 'errs when invalid' do
-          header_h['ephemeralPublicKey'] = 'invalid ephemeralPublicKey'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey/)
-        end
-        it 'errs when not a string' do
-          header_h['ephemeralPublicKey'] = 123
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*must be a string/)
-        end
-
-        it 'errs when not Base64' do
-          header_h['ephemeralPublicKey'] = '%'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*invalid base64/)
-        end
-
-        it 'errs when invalid EC public key' do
-          header_h['ephemeralPublicKey'] = 'validBase64ButInvalidEcPublicKey'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /ephemeralPublicKey.*EC public key/)
-        end
-      end
-
-      context 'wrappedKey' do
-        it 'errs when invalid' do
-          header_h['wrappedKey'] = 'invalid wrappedKey'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey.*invalid/)
-        end
-
-        it 'errs when not a string' do
-          header_h['wrappedKey'] = 123
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /wrappedKey.*must be a string/)
-        end
-      end
-
-      context 'consistency among ephemeralPublicKey and wrappedKey' do
-        it 'errs when both are present' do
-          header_h['ephemeralPublicKey'] = valid_ec_public_key
-          header_h['wrappedKey'] = 'validbase64='
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /xor/)
-        end
-
-        it 'errs when neither are present' do
-          header_h.delete('ephemeralPublicKey')
-          header_h.delete('wrappedKey')
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /xor/)
-        end
-
-        it 'does not err when only ephemeralPublicKey is present' do
-          header_h['ephemeralPublicKey'] = valid_ec_public_key
-          header_h.delete('wrappedKey')
-          is_expected.to_not raise_error
-        end
-
-        it 'does not err when only wrappedKey is present' do
-          header_h.delete('ephemeralPublicKey')
-          header_h['wrappedKey'] = 'validbase64='
-          is_expected.to_not raise_error
-        end
-      end
-
-      context 'publicKeyHash' do
-        it 'errs when invalid' do
-          header_h['publicKeyHash'] = 'invalid publicKeyHash'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash/)
+          token_h['signature'] = 'invalid signature'
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to include('signature')
         end
 
         it 'errs when missing' do
-          header_h.delete('publicKeyHash')
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*missing/)
+          token_h.delete('signature')
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/signature.*missing/)
         end
 
         it 'errs when not a string' do
-          header_h['publicKeyHash'] = 123
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*must be a string/)
-        end
-
-        it 'errs when not Base64' do
-          header_h['publicKeyHash'] = '%'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /publicKeyHash.*invalid base64/)
-        end
-      end
-
-      context 'transactionId' do
-        it 'errs when invalid' do
-          header_h['transactionId'] = 'invalid transactionId'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId/)
-        end
-
-        it 'errs when missing' do
-          header_h.delete('transactionId')
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*missing/)
-        end
-
-        it 'errs when not a string' do
-          header_h['transactionId'] = 123
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*must be a string/)
+          token_h['signature'] = 123
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/signature.*must be a string/)
         end
 
         it 'errs when not a hex string' do
-          header_h['transactionId'] = 'not hex'
-          is_expected.to raise_error(Pedicel::Validator::TokenFormatError, /transactionId.*invalid hex/)
+          token_h['signature'] = 'not hex'
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/signature.*must be base64/)
+        end
+      end
+
+      context 'version' do
+        it 'errs when invalid' do
+          token_h['version'] = 'invalid version'
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to include('version')
+        end
+
+        it 'errs when missing' do
+          token_h.delete('version')
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/version.*missing/)
+        end
+
+        it 'errs when not a strign' do
+          token_h['version'] = 123
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/version.*must be a string/)
+        end
+
+        it 'errs when not a supported version' do
+          token_h['version'] = 'EC_v0'
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/version.*must be one of/)
+        end
+      end
+
+      context 'header' do
+        let (:header_h) { token_h['header'] }
+
+        it 'errs when missing' do
+          token_h.delete('header')
+          is_expected.to raise_error(Pedicel::Validator::Token::Error)
+          expect(e).to match(/header.*missing/)
+        end
+
+        it 'errs when not a hash' do
+          ['asdf', [], 123].each do |invalid|
+            token_h['header'] = invalid
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/header.*hash/)
+          end
+        end
+
+        context 'applicationData' do
+          it 'errs when invalid' do
+            header_h['applicationData'] = 'invalid applicationData'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('applicationData')
+          end
+
+          it 'does not err when missing' do
+            header_h.delete('applicationData')
+            is_expected.to_not raise_error
+          end
+
+          it 'errs when not a string' do
+            header_h['applicationData'] = 123
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/applicationData.*must be a string/)
+          end
+
+          it 'errs when not a hex string' do
+            header_h['applicationData'] = 'not hex'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/applicationData.*must be hex/)
+          end
+        end
+
+        context 'ephemeralPublicKey' do
+          it 'errs when invalid' do
+            header_h['ephemeralPublicKey'] = 'invalid ephemeralPublicKey'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('ephemeralPublicKey')
+          end
+          it 'errs when not a string' do
+            header_h['ephemeralPublicKey'] = 123
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/ephemeralPublicKey.*must be a string/)
+          end
+
+          it 'errs when not Base64' do
+            header_h['ephemeralPublicKey'] = '%'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/ephemeralPublicKey.*must be base64/)
+          end
+
+          it 'errs when invalid EC public key' do
+            header_h['ephemeralPublicKey'] = 'validBase64ButInvalidEcPublicKey'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/ephemeralPublicKey.*EC public key/)
+          end
+        end
+
+        context 'wrappedKey' do
+          it 'errs when invalid' do
+            header_h['wrappedKey'] = 'invalid wrappedKey'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/wrappedKey.*must be/)
+          end
+
+          it 'errs when not a string' do
+            header_h['wrappedKey'] = 123
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/wrappedKey.*must be a string/)
+          end
+        end
+
+        context 'consistency among ephemeralPublicKey and wrappedKey' do
+          it 'errs when both are present' do
+            header_h['ephemeralPublicKey'] = valid_ec_public_key
+            header_h['wrappedKey'] = 'validbase64='
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('xor')
+          end
+
+          it 'errs when neither are present' do
+            header_h.delete('ephemeralPublicKey')
+            header_h.delete('wrappedKey')
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('xor')
+          end
+
+          it 'does not err when only ephemeralPublicKey is present' do
+            header_h['ephemeralPublicKey'] = valid_ec_public_key
+            header_h.delete('wrappedKey')
+            is_expected.to_not raise_error
+          end
+
+          it 'does not err when only wrappedKey is present' do
+            header_h.delete('ephemeralPublicKey')
+            header_h['wrappedKey'] = 'validbase64='
+            is_expected.to_not raise_error
+          end
+        end
+
+        context 'publicKeyHash' do
+          it 'errs when invalid' do
+            header_h['publicKeyHash'] = 'invalid publicKeyHash'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('publicKeyHash')
+          end
+
+          it 'errs when missing' do
+            header_h.delete('publicKeyHash')
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/publicKeyHash.*missing/)
+          end
+
+          it 'errs when not a string' do
+            header_h['publicKeyHash'] = 123
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/publicKeyHash.*must be a string/)
+          end
+
+          it 'errs when not Base64' do
+            header_h['publicKeyHash'] = '%'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/publicKeyHash.*must be base64/)
+          end
+        end
+
+        context 'transactionId' do
+          it 'errs when invalid' do
+            header_h['transactionId'] = 'invalid transactionId'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to include('transactionId')
+          end
+
+          it 'errs when missing' do
+            header_h.delete('transactionId')
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/transactionId.*missing/)
+          end
+
+          it 'errs when not a string' do
+            header_h['transactionId'] = 123
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/transactionId.*must be a string/)
+          end
+
+          it 'errs when not a hex string' do
+            header_h['transactionId'] = 'not hex'
+            is_expected.to raise_error(Pedicel::Validator::Token::Error)
+            expect(e).to match(/transactionId.*must be hex/)
+          end
         end
       end
     end
   end
 
-  describe '.valid_token_data?' do
-    it 'relies on validate_token_data' do
-      expect(Pedicel::Validator).to receive(:validate_token_data).with(nil).and_return(true)
+  describe Pedicel::Validator::TokenData do
+    let(:token_data_h) { JSON.parse(token.unencrypted_data.to_hash.to_json) }
+    let(:validator) { Pedicel::Validator::TokenData.new(token_data_h) }
+    let(:e) { validator.errors.to_s }
 
-      expect(Pedicel::Validator.valid_token_data?(nil)).to eq(true)
-    end
-
-    it 'relies on validate_token_data' do
-      expect(Pedicel::Validator).to receive(:validate_token_data).with(nil).and_raise(Pedicel::Validator::TokenDataFormatError, 'boom')
-
-      expect(Pedicel::Validator.valid_token_data?(nil)).to eq(false)
-    end
-  end
-
-  describe '.validate_token_data' do
-    let (:token_data_h) { JSON.parse(token.unencrypted_data.to_hash.to_json) }
-    let (:method) { lambda { |x| Pedicel::Validator.validate_token_data(x) } }
-    let (:error) { Pedicel::Validator::TokenDataFormatError }
-
-    context 'can be happy' do
-      it 'does not err on valid token data' do
-        expect{method.call(token_data_h)}.to_not raise_error
-      end
-
-      it 'is true for valid token data' do
-        expect(method.call(token_data_h)).to be true
+    describe '#valid?' do
+      it 'relies on #validate' do
+        return_value = 'return_value'
+        expect(validator).to receive(:validate).and_return(return_value)
+        expect(validator.valid?).to equal return_value
       end
     end
 
-    context 'wrong data' do
-      it 'errs when required data is missing' do
-        required_keys = [
+    describe '#validate' do
+      subject { lambda { validator.validate } }
+
+      context 'can be happy' do
+        it 'does not err on valid token data' do
+          is_expected.to_not raise_error
+        end
+
+        it 'is true for valid token data' do
+          expect(validator.validate).to be true
+        end
+      end
+
+      context 'wrong data' do
+        [
           'applicationPrimaryAccountNumber',
           'applicationExpirationDate',
           'currencyCode',
@@ -292,212 +321,145 @@ describe Pedicel::Validator do
           'deviceManufacturerIdentifier',
           'paymentDataType',
           'paymentData',
-        ]
+        ].each do |required_key|
+          it "errs when #{required_key} is missing" do
+            token_data_h.reject!{|key, _| key == required_key}
 
-        required_keys.each do |required_key|
-          inadequate_data = token_data_h.reject{|key, _| key == required_key}
-          message = "#{required_key}: [\"is missing\"]"
-
-          expect{method.call(inadequate_data)}.to raise_error(error, message)
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/#{required_key}.*is missing/)
+          end
         end
-      end
 
-      it 'errs when a value required to be a string is not a string' do
-        string_keys = [
+        [
           'applicationPrimaryAccountNumber',
           'applicationExpirationDate',
           'currencyCode',
           'cardholderName',
           'deviceManufacturerIdentifier',
           'paymentDataType',
-        ]
+        ].each do |string_key|
+          it "errs when #{string_key} is not a string" do
+            token_data_h.merge!(string_key => 42)
 
-        string_keys.each do |string_key|
-          invalid_data = token_data_h.merge(string_key => 42)
-          message = "#{string_key}: [\"must be a string\"]"
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/#{string_key}.*must be a string/)
+          end
         end
 
-        payment_data_string_keys = [
+        [
           'onlinePaymentCryptogram',
           'eciIndicator',
           'emvData',
           'encryptedPINData',
-        ]
+        ].each do |payment_data_string_key|
+          it "errs when #{payment_data_string_key} is not a string" do
+            token_data_h['paymentData'].merge!(payment_data_string_key => 42)
 
-        payment_data_string_keys.each do |string_key|
-          payment_data = token_data_h['paymentData']
-          invalid_payment_data = payment_data.merge(string_key => 42)
-          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
-          message = "paymentData: {\"#{string_key}\"=>[\"must be a string\"]}"
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when applicationPrimaryAccountNumber is not a PAN' do
-        key = 'applicationPrimaryAccountNumber'
-        message = "#{key}: [\"invalid pan\"]"
-
-        invalid_values = [
-          '0123123412341234',
-          '1234567890',
-          '12345678901234567890',
-          '1234A23412341234',
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when applicationExpirationDate is not a date' do
-        key = 'applicationExpirationDate'
-        message = "#{key}: [\"invalid date format YYMMDD\"]"
-
-        invalid_values = [
-          '12345',
-          '1234567',
-          '1A3456',
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when currencyCode is not a currency code' do
-        key = 'currencyCode'
-        message = "#{key}: [\"is in invalid format\"]"
-
-        invalid_values = [
-          '11',
-          '11A',
-          '1111',
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when transactionAmount is not an integer' do
-        key = 'transactionAmount'
-        message = "#{key}: [\"must be an integer\"]"
-
-        invalid_values = [
-          'abc',
-          '42',
-          [42],
-          { abc: 42 },
-          { 'abc' => 42 },
-          true,
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when deviceManufacturerIdentifier or encryptedPINData is not hex' do
-        key = 'deviceManufacturerIdentifier'
-        message = "#{key}: [\"invalid hex\"]"
-
-        invalid_values = [
-          '42-42',
-          '42Z',
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-
-        key = 'encryptedPINData'
-        message = "paymentData: {\"#{key}\"=>[\"invalid hex\"]}"
-
-        payment_data = token_data_h['paymentData']
-
-        invalid_values.each do |invalid_value|
-          invalid_payment_data = payment_data.merge(key => invalid_value)
-          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when paymentDataType is unsupported' do
-        key = 'paymentDataType'
-        message = "#{key}: [\"must be one of: 3DSecure, EMV\"]"
-
-        invalid_values = [
-          '3dsecure',
-          'emv',
-          '3D Secure',
-          '3DSecure2',
-          'EMVCo',
-        ]
-
-        invalid_values.each do |invalid_value|
-          invalid_data = token_data_h.merge(key => invalid_value)
-
-          expect{method.call(invalid_data)}.to raise_error(error, message)
-        end
-      end
-
-      it 'errs when onlinePaymentCryptogram or emvData is not base64' do
-        payment_data_base64_keys = [
-          'onlinePaymentCryptogram',
-          'emvData',
-        ]
-
-        payment_data = token_data_h['paymentData']
-
-        payment_data_base64_keys.each do |base64_key|
-          message = "paymentData: {\"#{base64_key}\"=>[\"invalid base64\"]}"
-
-          invalid_values = [
-            '%',
-            'fooo=',
-            'f===',
-          ]
-
-          invalid_values.each do |invalid_value|
-            invalid_payment_data = payment_data.merge(base64_key => invalid_value)
-            invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
-
-            expect{method.call(invalid_data)}.to raise_error(error, message)
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/#{payment_data_string_key}.*must be a string/)
           end
         end
-      end
 
-      it 'errs when eciIndicator is invalid' do
-        key = 'eciIndicator'
-        message = "paymentData: {\"#{key}\"=>[\"not an ECI indicator\"]}"
+        it 'errs when applicationPrimaryAccountNumber is not a PAN' do
+          [
+            '0123123412341234',
+            '1234567890',
+            '12345678901234567890',
+            '1234A23412341234',
+          ].each do |invalid_value|
+            token_data_h.merge!('applicationPrimaryAccountNumber' => invalid_value)
 
-        invalid_values = [
-          '1',
-          '123',
-          '1A',
-        ]
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/applicationPrimaryAccountNumber.*must be a pan/)
+          end
+        end
 
-        payment_data = token_data_h['paymentData']
+        it 'errs when applicationExpirationDate is not a date' do
+          %w(12345 1234567 1A3456).each do |invalid_value|
+            token_data_h.merge!('applicationExpirationDate' => invalid_value)
 
-        invalid_values.each do |invalid_value|
-          invalid_payment_data = payment_data.merge(key => invalid_value)
-          invalid_data = token_data_h.merge('paymentData' => invalid_payment_data)
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/applicationExpirationDate.*must be formatted YYMMDD/)
+          end
+        end
 
-          expect{method.call(invalid_data)}.to raise_error(error, message)
+        it 'errs when currencyCode is not a currency code' do
+          %w(11 11A 1111).each do |invalid_value|
+            token_data_h.merge!('currencyCode' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/currencyCode.*must be an ISO 4217 numeric code/)
+          end
+        end
+
+        it 'errs when transactionAmount is not an integer' do
+          [
+            'abc',
+            '42',
+            [42],
+            { abc: 42 },
+            { 'abc' => 42 },
+            true,
+          ].each do |invalid_value|
+            token_data_h.merge!('transactionAmount' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/transactionAmount.*must be an integer/)
+          end
+        end
+
+        it 'errs when deviceManufacturerIdentifier is not hex' do
+          %w(42-42 42Z).each do |invalid_value|
+            token_data_h.merge!('deviceManufacturerIdentifier' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/deviceManufacturerIdentifier.*must be hex/)
+          end
+        end
+
+        it 'errs when encryptedPINData is not hex' do
+          %w(42-42 42Z).each do |invalid_value|
+            token_data_h['paymentData'].merge!('encryptedPINData' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/encryptedPINData.*must be hex/)
+          end
+        end
+
+        it 'errs when paymentDataType is unsupported' do
+          %w(3dsecure emv 3D Secure 3DSecure2 EMVCo).each do |invalid_value|
+            token_data_h.merge!('paymentDataType' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/paymentDataType.*must be one of: 3DSecure, EMV/)
+          end
+        end
+
+        it 'errs when onlinePaymentCryptogram is not base64' do
+          %w(% fooo= f===).each do |invalid_value|
+            token_data_h['paymentData'].merge!('onlinePaymentCryptogram' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/onlinePaymentCryptogram.*must be base64/)
+          end
+        end
+
+        it 'errs when emvData is not base64' do
+          %w(% fooo= f===).each do |invalid_value|
+            token_data_h['paymentData'].merge!('emvData' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/emvData.*must be base64/)
+          end
+        end
+
+        it 'errs when eciIndicator is invalid' do
+          %w(1 123 1A).each do |invalid_value|
+            token_data_h['paymentData'].merge!('eciIndicator' => invalid_value)
+
+            is_expected.to raise_error(Pedicel::Validator::TokenData::Error)
+            expect(e).to match(/eciIndicator.*must be an ECI/)
+          end
         end
       end
     end
