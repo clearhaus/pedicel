@@ -12,15 +12,15 @@ module Pedicel
       include Dry::Logic::Predicates
 
       CUSTOM_PREDICATE_ERRORS = {
-        base64?:          'must be base64',
+        base64?:          'must be Base64',
         hex?:             'must be hex',
         pan?:             'must be a pan',
         yymmdd?:          'must be formatted YYMMDD',
         ec_public_key?:   'must be an EC public key',
         pkcs7_signature?: 'must be a PKCS7 Signature',
         eci?:             'must be an ECI',
-        hex_sha256?:      'must be a hex-encoded SHA256',
-        base64_sha256?:   'must be a base64-encoded SHA256',
+        hex_sha256?:      'must be a hex-encoded SHA-256',
+        base64_sha256?:   'must be a Base64-encoded SHA-256',
         iso4217_numeric?: 'must be an ISO 4217 numeric code',
       }.freeze
 
@@ -36,7 +36,7 @@ module Pedicel
       end
 
       # We should figure out how strict we should be. Hopefully we can discard
-      # the above base64? predicate and use the following simpler one:
+      # the above Base64? predicate and use the following simpler one:
       #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
 
       predicate(:base64_sha256?) { |x| base64?(x) && Base64.decode64(x).length == 32 }
