@@ -3,6 +3,7 @@ require 'base64'
 require 'openssl'
 
 module Pedicel
+
   # Validations for Apple Pay Payment Token and associated data:
   # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
   # This purposefully only does syntactic validation (as opposed to semantic).
@@ -58,7 +59,14 @@ module Pedicel
       predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
     end
 
-    TokenSchema = Dry::Validation.Schema do
+    class BaseSchema < Dry::Validation::Schema
+      predicates(Predicates)
+      def self.messages
+        super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
+      end
+    end
+
+    TokenHeaderSchema = Dry::Validation.Schema(BaseSchema) do
       configure do
         # NOTE: This option removes/sanitizes hash element not mentioned/tested.
         # Hurray for good documentation.
@@ -68,44 +76,44 @@ module Pedicel
         # untested keys were encountered, however this appears to not be the
         # case. Anyways, it's (of course) not documented.
         # config.hash_type = :strict
-
-        predicates(Predicates)
-        def self.messages
-          super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
-        end
       end
+
+      optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
+
+      optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
+
+      optional(:wrappedKey).filled(:str?, :base64?)
+
+      rule('ephemeralPublicKey xor wrappedKey': [:ephemeralPublicKey, :wrappedKey]) do |e, w|
+        e.filled? ^ w.filled?
+      end
+
+      required(:publicKeyHash).filled(:str?, :base64?, :base64_sha256?)
+
+      required(:transactionId).filled(:str?, :hex?)
+    end
+
+    TokenSchema = Dry::Validation.Schema(BaseSchema) do
+      configure { config.input_processor = :json }
 
       required(:data).filled(:str?, :base64?)
 
-      required(:header).schema do
-        optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
-
-        optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
-
-        optional(:wrappedKey).filled(:str?, :base64?)
-
-        rule('ephemeralPublicKey xor wrappedKey': [:ephemeralPublicKey, :wrappedKey]) do |e, w|
-          e.filled? ^ w.filled?
-        end
-
-        required(:publicKeyHash).filled(:str?, :base64?, :base64_sha256?)
-
-        required(:transactionId).filled(:str?, :hex?)
-      end
+      required(:header).schema(TokenHeaderSchema)
 
       required(:signature).filled(:str?, :base64?, :pkcs7_signature?)
 
       required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
     end
 
-    TokenDataSchema = Dry::Validation.Schema do
-      configure do
-        predicates(Predicates)
-        def self.messages
-          super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
-        end
-      end
+    TokenDataPaymentDataSchema = Dry::Validation.Schema(BaseSchema) do
+      optional('onlinePaymentCryptogram').filled(:str?, :base64?)
+      optional('eciIndicator').filled(:str?, :eci?)
 
+      optional('emvData').filled(:str?, :base64?)
+      optional('encryptedPINData').filled(:str?, :hex?)
+    end
+
+    TokenDataSchema = Dry::Validation.Schema(BaseSchema) do
       required('applicationPrimaryAccountNumber').filled(:str?, :pan?)
 
       required('applicationExpirationDate').filled(:str?, :yymmdd?)
@@ -120,28 +128,23 @@ module Pedicel
 
       required('paymentDataType').filled(:str?, included_in?: %w[3DSecure EMV])
 
-      required('paymentData').schema do
-        optional('onlinePaymentCryptogram').filled(:str?, :base64?)
-        optional('eciIndicator').filled(:str?, :eci?)
-
-        optional('emvData').filled(:str?, :base64?)
-        optional('encryptedPINData').filled(:str?, :hex?)
-      end
+      required('paymentData').schema(TokenDataPaymentDataSchema)
 
       rule('paymentDataType affects paymentData': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |t, cryptogram|
         t.eql?('3DSecure') > cryptogram.filled?
       end
     end
 
-    class Base
-      class Error < StandardError; end
+    class Error < StandardError; end
 
+    private
+    module InstanceMethods
       def validate
-        @validation = @schema.call(@input)
+        @validation ||= @schema.call(@input)
 
-        raise Error if @validation.failure?
+        return true if @validation.success?
 
-        true
+        raise Error, "validation error: #{@validation.errors.keys.join(', ')}"
       end
 
       def valid?
@@ -156,15 +159,20 @@ module Pedicel
         @validation.errors
       end
     end
+    public
 
-    class Token < Base
+    class Token
+      include InstanceMethods
+      class Error < ::Pedicel::Validator::Error; end
       def initialize(input)
         @input = input
         @schema = TokenSchema
       end
     end
 
-    class TokenData < Base
+    class TokenData
+      include InstanceMethods
+      class Error < ::Pedicel::Validator::Error; end
       def initialize(input)
         @input = input
         @schema = TokenDataSchema
