@@ -137,7 +137,6 @@ module Pedicel
 
     class Error < StandardError; end
 
-    private
     module InstanceMethods
       def validate
         @validation ||= @schema.call(@input)
@@ -159,7 +158,6 @@ module Pedicel
         @validation.errors
       end
     end
-    public
 
     class Token
       include InstanceMethods
