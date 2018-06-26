@@ -130,9 +130,29 @@ module Pedicel
 
       required('paymentData').schema(TokenDataPaymentDataSchema)
 
-      rule('paymentDataType affects paymentData': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |t, cryptogram|
-        t.eql?('3DSecure') > cryptogram.filled?
+      rule('when paymentDataType is 3DSecure, onlinePaymentCryptogram': ['paymentDataType', ['paymentData', 'onlinePaymentCryptogram']]) do |type, cryptogram|
+        type.eql?('3DSecure') > cryptogram.filled?
       end
+      rule('when paymentDataType is 3DSecure, emvData': ['paymentDataType', ['paymentData', 'emvData']]) do |type, emv|
+        type.eql?('3DSecure') > emv.none?
+      end
+      rule('when paymentDataType is 3DSecure, encryptedPINData': ['paymentDataType', ['paymentData', 'encryptedPINData']]) do |type, pin|
+        type.eql?('3DSecure') > pin.none?
+      end
+
+      rule('when paymentDataType is EMV, onlinePaymentCryptogram': ['paymentDataType', ['paymentData', 'onlinePaymentCryptogram']]) do |type, cryptogram|
+        type.eql?('EMV') > cryptogram.none?
+      end
+      rule('when paymentDataType is EMV, eciIndicator': ['paymentDataType', ['paymentData', 'eciIndicator']]) do |type, eci|
+        type.eql?('EMV') > eci.none?
+      end
+      rule('when paymentDataType is EMV, emvData': ['paymentDataType', ['paymentData', 'emvData']]) do |type, emv|
+        type.eql?('EMV') > emv.filled?
+      end
+      rule('when paymentDataType is EMV, encryptedPINData': ['paymentDataType', ['paymentData', 'encryptedPINData']]) do |type, pin|
+        type.eql?('EMV') > pin.filled?
+      end
+
     end
 
     class Error < StandardError; end
