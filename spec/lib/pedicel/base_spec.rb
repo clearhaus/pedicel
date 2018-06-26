@@ -207,7 +207,13 @@ describe 'Pedicel::Base' do
     let (:signature) { OpenSSL::PKCS7.new(pedicel.signature) }
 
     context 'errors' do
-      subject { lambda { Pedicel::Base.extract_certificates(signature: signature, config: pedicel.config) } }
+      subject do
+        lambda do
+          Pedicel::Base.extract_certificates(signature: signature,
+                                             intermediate_oid: pedicel.config[:oid_intermediate_certificate],
+                                             leaf_oid: pedicel.config[:oid_leaf_certificate])
+        end
+      end
 
       it 'does not err when all checks are good' do
         is_expected.to_not raise_error
