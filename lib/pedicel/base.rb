@@ -126,7 +126,9 @@ module Pedicel
       # 1.a
       # Ensure that the certificates contain the correct custom OIDs: (...).
       # The value for these marker OIDs doesn't matter, only their presence.
-      leaf, intermediate, other = self.class.extract_certificates(signature: s)
+      leaf, intermediate, other = self.class.extract_certificates(signature: s,
+                                                                  intermediate_oid: @config[:oid_intermediate_certificate],
+                                                                  leaf_oid: @config[:oid_leaf_certificate])
       # Implicit since these are the ones extracted.
 
       # 1.b
@@ -154,12 +156,14 @@ module Pedicel
 
       # 1.e
       # Inspect the CMS signing time of the signature (...)
-      self.class.verify_signed_time(signature: s, now: now)
+      self.class.verify_signed_time(signature: s, now: now, few_min: @config[:replay_threshold_seconds])
 
       self
     end
 
-    def self.extract_certificates(signature:, config: Pedicel::DEFAULT_CONFIG)
+    def self.extract_certificates(signature:,
+                                  intermediate_oid: Pedicel::DEFAULT_CONFIG[:oid_intermediate_certificate],
+                                  leaf_oid:         Pedicel::DEFAULT_CONFIG[:oid_leaf_certificate])
       leafs, intermediates, others = [], [], []
 
       signature.certificates.each do |certificate|
@@ -167,10 +171,10 @@ module Pedicel
 
         certificate.extensions.each do |extension|
           case extension.oid
-          when config[:oid_intermediate_certificate]
+          when intermediate_oid
             intermediates << certificate
             leaf_or_intermediate = true
-          when config[:oid_leaf_certificate]
+          when leaf_oid
             leafs << certificate
             leaf_or_intermediate = true
           end
@@ -179,8 +183,8 @@ module Pedicel
         others << certificate unless leaf_or_intermediate
       end
 
-      raise SignatureError, "no unique leaf certificate found (OID #{config[:oid_leaf_certificate]})" unless leafs.length == 1
-      raise SignatureError, "no unique intermediate certificate found (OID #{config[:oid_intermediate_certificate]})" unless intermediates.length == 1
+      raise SignatureError, "no unique leaf certificate found (OID #{leaf_oid})" unless leafs.length == 1
+      raise SignatureError, "no unique intermediate certificate found (OID #{intermediate_oid})" unless intermediates.length == 1
       raise SignatureError, "too many certificates found in the signature: #{others.map(&:subject).join('; ')}" if others.length > 1
 
       [leafs.first, intermediates.first, others.first]
@@ -222,7 +226,7 @@ module Pedicel
       true
     end
 
-    def self.verify_signed_time(signature:, now:, config: Pedicel::DEFAULT_CONFIG)
+    def self.verify_signed_time(signature:, now: Time.now, few_min: Pedicel::DEFAULT_CONFIG[:replay_threshold_seconds])
       # Inspect the CMS signing time of the signature, as defined by section
       # 11.3 of RFC 5652. If the time signature and the transaction time differ
       # by more than a few minutes, it's possible that the token is a replay
@@ -233,8 +237,6 @@ module Pedicel
         raise SignatureError, 'not 1 signer, unable to determine signing time'
       end
       signed_time = signature.signers.first.signed_time
-
-      few_min = config[:replay_threshold_seconds]
 
       # Time objects. DST aware. Ignoring leap seconds. Both ends included.
       return true if signed_time.between?(now - few_min, now + few_min)
