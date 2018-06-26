@@ -60,7 +60,7 @@ describe 'Pedicel::Validator::TokenSchema' do
       is_expected.to dissatisfy_schema(ts, version: ['is missing'])
     end
 
-    it 'errs when not a strign' do
+    it 'errs when not a string' do
       token_h['version'] = 123
       is_expected.to dissatisfy_schema(ts, version: ['must be a string'])
     end
