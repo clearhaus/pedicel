@@ -15,10 +15,8 @@ describe Pedicel::Validator::TokenData do
 
   describe '#validate' do
     context 'can be happy' do
-      subject { lambda { validator.validate } }
-
       it 'does not err on a valid token' do
-        is_expected.to_not raise_error
+        expect{validator.validate}.to_not raise_error
       end
 
       it 'is truthy for a valid token' do
