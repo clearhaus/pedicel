@@ -91,6 +91,64 @@ describe 'Pedicel::Validator::TokenDataSchema' do
       end
     end
 
-    it 'errs when paymentDataType is 3DSecure but onlinePaymentCryptogram is missing'
+    context 'paymentDataType is 3DSecure' do
+      it 'can be happy' do
+        is_expected.to satisfy_schema(tds)
+      end
+
+      it 'errs when onlinePaymentCryptogram is missing' do
+        token_data_h['paymentDataType'] = '3DSecure'
+        token_data_h['paymentData'].delete('onlinePaymentCryptogram')
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is 3DSecure, onlinePaymentCryptogram': ['must be filled'])
+      end
+
+      it 'errs when emvData is present' do
+        token_data_h['paymentDataType'] = '3DSecure'
+        token_data_h['paymentData']['emvData'] = Base64.strict_encode64('EMV payment structure')
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is 3DSecure, emvData': ['cannot be defined'])
+      end
+
+      it 'errs when encryptedPINData is present' do
+        token_data_h['paymentDataType'] = '3DSecure'
+        token_data_h['paymentData']['encryptedPINData'] = 'a1b2c3d4e5f6'
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is 3DSecure, encryptedPINData': ['cannot be defined'])
+      end
+    end
+
+    context 'paymentDataType is EMV' do
+      let(:orig) { JSON.parse(token.unencrypted_data.to_hash.to_json) }
+
+      before(:each) do
+        token_data_h['paymentDataType'] = 'EMV'
+        token_data_h['paymentData'].delete('onlinePaymentCryptogram')
+        token_data_h['paymentData'].delete('eciIndicator')
+        token_data_h['paymentData']['emvData'] = Base64.strict_encode64('EMV payment structure')
+        token_data_h['paymentData']['encryptedPINData'] = 'a1b2c3d4e5f6'
+      end
+
+      it 'can be happy' do
+        is_expected.to satisfy_schema(tds)
+      end
+
+      it 'errs when onlinePaymentCryptogram is present' do
+        token_data_h['paymentData']['onlinePaymentCryptogram'] = orig['paymentData']['onlinePaymentCryptogram']
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is EMV, onlinePaymentCryptogram': ['cannot be defined'])
+      end
+
+      it 'errs when eciIndicator is present' do
+        token_data_h['paymentData']['eciIndicator'] = orig['paymentData']['eciIndicator']
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is EMV, eciIndicator': ['cannot be defined'])
+      end
+
+      it 'errs when emvData is missing' do
+        token_data_h['paymentData'].delete('emvData')
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is EMV, emvData': ['must be filled'])
+      end
+
+      it 'errs when encryptedPINData is missing' do
+        token_data_h['paymentData'].delete('encryptedPINData')
+        is_expected.to dissatisfy_schema(tds, 'when paymentDataType is EMV, encryptedPINData': ['must be filled'])
+      end
+    end
   end
 end
