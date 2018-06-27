@@ -4,7 +4,16 @@ require 'lib/pedicel/validator/helper'
 
 describe 'Pedicel::Validator::TokenDataSchema' do
   let(:tds) { Pedicel::Validator::TokenDataSchema }
-  let(:token_data_h) { JSON.parse(token.unencrypted_data.to_hash.to_json, symbolize_names: true) }
+
+  it 'is happy about a hash with string keys' do
+    expect(JSON.parse(token.unencrypted_data.to_json, symbolize_names: false)).to satisfy_schema(tds)
+  end
+
+  it 'is happy about a hash with symbolic keys' do
+    expect(JSON.parse(token.unencrypted_data.to_json, symbolize_names: true)).to satisfy_schema(tds)
+  end
+
+  let(:token_data_h) { token.unencrypted_data.to_hash }
   subject { token_data_h }
 
   context 'wrong data' do

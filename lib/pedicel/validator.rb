@@ -145,8 +145,12 @@ module Pedicel
     class Error < StandardError; end
 
     module InstanceMethods
+      attr_reader :output
+
       def validate
         @validation ||= @schema.call(@input)
+
+        @output = @validation.output
 
         return true if @validation.success?
 

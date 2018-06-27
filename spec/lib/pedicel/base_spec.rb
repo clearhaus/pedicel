@@ -2,49 +2,39 @@ require 'pedicel/base'
 require 'pedicel-pay'
 
 describe 'Pedicel::Base' do
-  let (:version)          { 'EC_v1' }
-  let (:encrypted_data)   { 'this is encrypted' }
-  let (:signature)        { 'this is the signature' }
-  let (:transaction_id)   { 'transaction id' }
-  let (:application_data) { 'application data' }
+  let (:backend) { PedicelPay::Backend.generate }
 
-  let (:token_hash) do
-    {
-      'version'        => version,
-      'data'           => Base64.encode64(encrypted_data),
-      'signature'      => Base64.encode64(signature),
-      'header' => {
-        'transactionId' => transaction_id.unpack('H*').first,
-        'applicationData' => application_data.unpack('H*').first,
-      },
-    }
+  let (:client) { backend.generate_client }
+
+  let (:token) { PedicelPay::Token.new.sample }
+
+  let (:pedicel) do
+    backend.encrypt_and_sign(token, recipient: client)
+
+    config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
+
+    Pedicel::EC.new(token.to_hash, config: config)
   end
 
   describe 'basic accessors' do
-    let (:pedicel) do
-      expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true))
-
-      Pedicel::Base.new(token_hash)
-    end
-
     it '#version extracts the version as a symbol' do
-      expect(pedicel.version).to eq(version.to_sym)
+      expect(pedicel.version).to eq(token.version.to_sym)
     end
 
     it '#encrypted_data extracts the raw encrypted data' do
-      expect(pedicel.encrypted_data).to eq(encrypted_data)
+      expect(pedicel.encrypted_data).to eq(token.encrypted_data)
     end
 
     it '#signature extracts the raw signature' do
-      expect(pedicel.signature).to eq(signature)
+      expect(pedicel.signature).to eq(Base64.decode64(token.signature))
     end
 
     it '#transaction_id extracts the raw transactionId' do
-      expect(pedicel.transaction_id).to eq(transaction_id)
+      expect(pedicel.transaction_id).to eq(token.header.transaction_id)
     end
 
     it '#application_data extracts the raw applicationData' do
-      expect(pedicel.application_data).to eq(application_data)
+      expect(pedicel.application_data).to eq(token.header.data_hash)
     end
 
     it "#private_key_class returns the private key's class" do
@@ -57,31 +47,36 @@ describe 'Pedicel::Base' do
   end
 
   describe '#decrypt_aes' do
-    let (:unencrypted_data) { 'unencrypted data' }
-    let (:key) { OpenSSL::Digest::SHA256.new.update('key').digest }
+    let(:unencrypted_data) { 'unencrypted data' }
+    let(:key) { OpenSSL::Digest::SHA256.new.update('key').digest }
+
+    let(:token_hash) do
+      backend.encrypt_and_sign(token, recipient: client)
+      JSON.parse(token.to_json, symbolize_names: true)
+    end
 
     it 'decrypts with the correct key' do
-      token_hash.merge!('data' => Base64.encode64(PedicelPay::Helper.encrypt(data: unencrypted_data, key: key)))
+      token_hash.merge!(data: Base64.encode64(PedicelPay::Helper.encrypt(data: unencrypted_data, key: key)))
 
-      expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true))
-      expect(Pedicel::Base.new(token_hash).decrypt_aes(key: key)).to eq(unencrypted_data)
+      expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true, output: token_hash))
+      expect(Pedicel::Base.new(:anything).decrypt_aes(key: key)).to eq(unencrypted_data)
     end
 
     it 'errs when the wrong key is given' do
       wrong_key = OpenSSL::Digest::SHA256.new.update('wrong key').digest
 
-      token_hash.merge!('data' => Base64.encode64(PedicelPay::Helper.encrypt(data: unencrypted_data, key: key)))
+      token_hash.merge!(data: Base64.encode64(PedicelPay::Helper.encrypt(data: unencrypted_data, key: key)))
 
-      expect(Pedicel::Validator::Token).to receive(:new).twice.and_return(double(validate: true))
-      expect(Pedicel::Base.new(token_hash).decrypt_aes(key: key)).to eq(unencrypted_data)
-      expect{Pedicel::Base.new(token_hash).decrypt_aes(key: wrong_key)}.to raise_error(Pedicel::AesKeyError)
+      expect(Pedicel::Validator::Token).to receive(:new).twice.and_return(double(validate: true, output: token_hash))
+      expect(Pedicel::Base.new(:anything).decrypt_aes(key: key)).to eq(unencrypted_data)
+      expect{Pedicel::Base.new(:anything).decrypt_aes(key: wrong_key)}.to raise_error(Pedicel::AesKeyError)
     end
 
     it 'errs when an invalid key is given' do
       invalid_key = 'invalid key' # Invalid length; should be 32 bytes.
 
-      expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true))
-      expect{Pedicel::Base.new(token_hash).decrypt_aes(key: invalid_key)}.to raise_error(Pedicel::AesKeyError)
+      expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true, output: token_hash))
+      expect{Pedicel::Base.new(:anything).decrypt_aes(key: invalid_key)}.to raise_error(Pedicel::AesKeyError)
     end
   end
 
@@ -103,20 +98,6 @@ describe 'Pedicel::Base' do
 
       expect(pedicel.valid_signature?).to be false
     end
-  end
-
-  let (:backend) { PedicelPay::Backend.generate }
-
-  let (:client) { backend.generate_client }
-
-  let (:token) { PedicelPay::Token.new.sample }
-
-  let (:pedicel) do
-    backend.encrypt_and_sign(token, recipient: client)
-
-    config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
-
-    Pedicel::EC.new(token.to_hash, config: config)
   end
 
   describe 'Pedicel::Base.verify_signature' do
@@ -163,8 +144,8 @@ describe 'Pedicel::Base' do
         backend.encrypt_and_sign(token, recipient: client)
         token.signature = nil
 
-        expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true))
-        pedicel = Pedicel::EC.new(token.to_hash)
+        expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true, output: JSON.parse(token.to_json, symbolize_names: true)))
+        pedicel = Pedicel::EC.new(:anything)
 
         expect{pedicel.verify_signature}.to raise_error(Pedicel::SignatureError, /no signature/)
       end
@@ -173,8 +154,8 @@ describe 'Pedicel::Base' do
         backend.encrypt_and_sign(token, recipient: client)
         token.signature = 'invalid signature'
 
-        expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true))
-        pedicel = Pedicel::EC.new(token.to_hash)
+        expect(Pedicel::Validator::Token).to receive(:new).and_return(double(validate: true, output: JSON.parse(token.to_json, symbolize_names: true)))
+        pedicel = Pedicel::EC.new(:anything)
 
         expect{pedicel.verify_signature}.to raise_error(Pedicel::SignatureError, /invalid PKCS/)
       end
