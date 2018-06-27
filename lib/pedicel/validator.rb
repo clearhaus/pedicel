@@ -67,17 +67,6 @@ module Pedicel
     end
 
     TokenHeaderSchema = Dry::Validation.Schema(BaseSchema) do
-      configure do
-        # NOTE: This option removes/sanitizes hash element not mentioned/tested.
-        # Hurray for good documentation.
-        config.input_processor = :json
-
-        # In theory, I would guess that :strict below would cause a failure if
-        # untested keys were encountered, however this appears to not be the
-        # case. Anyways, it's (of course) not documented.
-        # config.hash_type = :strict
-      end
-
       optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
 
       optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
