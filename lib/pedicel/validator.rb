@@ -59,7 +59,7 @@ module Pedicel
       predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
     end
 
-    class BaseSchema < Dry::Validation::Schema
+    class BaseSchema < Dry::Validation::Schema::JSON
       predicates(Predicates)
       def self.messages
         super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
@@ -67,17 +67,6 @@ module Pedicel
     end
 
     TokenHeaderSchema = Dry::Validation.Schema(BaseSchema) do
-      configure do
-        # NOTE: This option removes/sanitizes hash element not mentioned/tested.
-        # Hurray for good documentation.
-        config.input_processor = :json
-
-        # In theory, I would guess that :strict below would cause a failure if
-        # untested keys were encountered, however this appears to not be the
-        # case. Anyways, it's (of course) not documented.
-        # config.hash_type = :strict
-      end
-
       optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
 
       optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
@@ -94,8 +83,6 @@ module Pedicel
     end
 
     TokenSchema = Dry::Validation.Schema(BaseSchema) do
-      configure { config.input_processor = :json }
-
       required(:data).filled(:str?, :base64?)
 
       required(:header).schema(TokenHeaderSchema)
@@ -106,50 +93,50 @@ module Pedicel
     end
 
     TokenDataPaymentDataSchema = Dry::Validation.Schema(BaseSchema) do
-      optional('onlinePaymentCryptogram').filled(:str?, :base64?)
-      optional('eciIndicator').filled(:str?, :eci?)
+      optional(:onlinePaymentCryptogram).filled(:str?, :base64?)
+      optional(:eciIndicator).filled(:str?, :eci?)
 
-      optional('emvData').filled(:str?, :base64?)
-      optional('encryptedPINData').filled(:str?, :hex?)
+      optional(:emvData).filled(:str?, :base64?)
+      optional(:encryptedPINData).filled(:str?, :hex?)
     end
 
     TokenDataSchema = Dry::Validation.Schema(BaseSchema) do
-      required('applicationPrimaryAccountNumber').filled(:str?, :pan?)
+      required(:applicationPrimaryAccountNumber).filled(:str?, :pan?)
 
-      required('applicationExpirationDate').filled(:str?, :yymmdd?)
+      required(:applicationExpirationDate).filled(:str?, :yymmdd?)
 
-      required('currencyCode').filled(:str?, :iso4217_numeric?)
+      required(:currencyCode).filled(:str?, :iso4217_numeric?)
 
-      required('transactionAmount').filled(:int?)
+      required(:transactionAmount).filled(:int?)
 
-      optional('cardholderName').filled(:str?)
+      optional(:cardholderName).filled(:str?)
 
-      required('deviceManufacturerIdentifier').filled(:str?, :hex?)
+      required(:deviceManufacturerIdentifier).filled(:str?, :hex?)
 
-      required('paymentDataType').filled(:str?, included_in?: %w[3DSecure EMV])
+      required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
 
-      required('paymentData').schema(TokenDataPaymentDataSchema)
+      required(:paymentData).schema(TokenDataPaymentDataSchema)
 
-      rule('when paymentDataType is 3DSecure, onlinePaymentCryptogram': ['paymentDataType', ['paymentData', 'onlinePaymentCryptogram']]) do |type, cryptogram|
+      rule('when paymentDataType is 3DSecure, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
         type.eql?('3DSecure') > cryptogram.filled?
       end
-      rule('when paymentDataType is 3DSecure, emvData': ['paymentDataType', ['paymentData', 'emvData']]) do |type, emv|
+      rule('when paymentDataType is 3DSecure, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
         type.eql?('3DSecure') > emv.none?
       end
-      rule('when paymentDataType is 3DSecure, encryptedPINData': ['paymentDataType', ['paymentData', 'encryptedPINData']]) do |type, pin|
+      rule('when paymentDataType is 3DSecure, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
         type.eql?('3DSecure') > pin.none?
       end
 
-      rule('when paymentDataType is EMV, onlinePaymentCryptogram': ['paymentDataType', ['paymentData', 'onlinePaymentCryptogram']]) do |type, cryptogram|
+      rule('when paymentDataType is EMV, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
         type.eql?('EMV') > cryptogram.none?
       end
-      rule('when paymentDataType is EMV, eciIndicator': ['paymentDataType', ['paymentData', 'eciIndicator']]) do |type, eci|
+      rule('when paymentDataType is EMV, eciIndicator': [:paymentDataType, [:paymentData, :eciIndicator]]) do |type, eci|
         type.eql?('EMV') > eci.none?
       end
-      rule('when paymentDataType is EMV, emvData': ['paymentDataType', ['paymentData', 'emvData']]) do |type, emv|
+      rule('when paymentDataType is EMV, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
         type.eql?('EMV') > emv.filled?
       end
-      rule('when paymentDataType is EMV, encryptedPINData': ['paymentDataType', ['paymentData', 'encryptedPINData']]) do |type, pin|
+      rule('when paymentDataType is EMV, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
         type.eql?('EMV') > pin.filled?
       end
 
