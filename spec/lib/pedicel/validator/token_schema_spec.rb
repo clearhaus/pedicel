@@ -4,6 +4,15 @@ require 'lib/pedicel/validator/helper'
 
 describe 'Pedicel::Validator::TokenSchema' do
   let(:ts) { Pedicel::Validator::TokenSchema }
+
+  it 'is happy about a hash with string keys' do
+    expect(JSON.parse(token.to_json, symbolize_names: false)).to satisfy_schema(ts)
+  end
+
+  it 'is happy about a hash with symbolic keys' do
+    expect(JSON.parse(token.to_json, symbolize_names: true)).to satisfy_schema(ts)
+  end
+
   let(:token_h) { token.to_hash }
   subject { token_h }
 
