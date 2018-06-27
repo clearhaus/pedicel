@@ -9,36 +9,37 @@ module Pedicel
     attr_reader :config
 
     def initialize(token, config: Pedicel::DEFAULT_CONFIG)
-      Validator::Token.new(token).validate
+      validation = Validator::Token.new(token)
+      validation.validate
 
-      @token  = token
+      @token  = validation.output
       @config = config
     end
 
     def version
-      @token['version']&.to_sym
+      @token[:version].to_sym
     end
 
     def encrypted_data
-      return nil unless @token['data']
+      return nil unless @token[:data]
 
-      Base64.decode64(@token['data'])
+      Base64.decode64(@token[:data])
     end
 
     def signature
-      return nil unless @token['signature']
+      return nil unless @token[:signature]
 
-      Base64.decode64(@token['signature'])
+      Base64.decode64(@token[:signature])
     end
 
     def transaction_id
-      [@token['header']['transactionId']].pack('H*')
+      [@token[:header][:transactionId]].pack('H*')
     end
 
     def application_data
-      return nil unless @token['header']['applicationData']
+      return nil unless @token[:header][:applicationData]
 
-      [@token['header']['applicationData']].pack('H*')
+      [@token[:header][:applicationData]].pack('H*')
     end
 
     def private_key_class

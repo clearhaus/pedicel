@@ -3,7 +3,7 @@ require 'pedicel/base'
 module Pedicel
   class EC < Base
     def ephemeral_public_key
-      Base64.decode64(@token['header']['ephemeralPublicKey'])
+      Base64.decode64(@token[:header][:ephemeralPublicKey])
     end
 
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,

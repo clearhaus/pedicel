@@ -148,10 +148,14 @@ module Pedicel
       def validate
         @validation ||= @schema.call(@input)
 
+        @output = @validation.output
+
         return true if @validation.success?
 
         raise Error, "validation error: #{@validation.errors.keys.join(', ')}"
       end
+
+      attr_reader :output
 
       def valid?
         validate
