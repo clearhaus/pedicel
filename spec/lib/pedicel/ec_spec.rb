@@ -253,8 +253,7 @@ describe 'Pedicel::EC' do
     end
 
     it 'errs if certificate has no merchant ID with the given OID' do
-      config = { oid_merchant_identifier_field: 'wrong oid' }
-      expect{Pedicel::EC.merchant_id(certificate: client.certificate, config: config)}.to raise_error(Pedicel::CertificateError, /no merchant identifier/)
+      expect{Pedicel::EC.merchant_id(certificate: client.certificate, mid_oid: 'wrong oid')}.to raise_error(Pedicel::CertificateError, /no merchant identifier/)
     end
   end
 end
