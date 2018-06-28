@@ -9,36 +9,37 @@ module Pedicel
     attr_reader :config
 
     def initialize(token, config: Pedicel::DEFAULT_CONFIG)
-      Validator.validate_token(token)
+      validation = Validator::Token.new(token)
+      validation.validate
 
-      @token  = token
+      @token  = validation.output
       @config = config
     end
 
     def version
-      @token['version']&.to_sym
+      @token[:version].to_sym
     end
 
     def encrypted_data
-      return nil unless @token['data']
+      return nil unless @token[:data]
 
-      Base64.decode64(@token['data'])
+      Base64.decode64(@token[:data])
     end
 
     def signature
-      return nil unless @token['signature']
+      return nil unless @token[:signature]
 
-      Base64.decode64(@token['signature'])
+      Base64.decode64(@token[:signature])
     end
 
     def transaction_id
-      [@token['header']['transactionId']].pack('H*')
+      [@token[:header][:transactionId]].pack('H*')
     end
 
     def application_data
-      return nil unless @token['header']['applicationData']
+      return nil unless @token[:header][:applicationData]
 
-      [@token['header']['applicationData']].pack('H*')
+      [@token[:header][:applicationData]].pack('H*')
     end
 
     def private_key_class
@@ -65,8 +66,7 @@ module Pedicel
       end
     end
 
-    private
-    def decrypt_aes_openssl(key)
+    private def decrypt_aes_openssl(key)
       cipher = OpenSSL::Cipher.new(symmetric_algorithm)
       cipher.decrypt
 
@@ -93,14 +93,13 @@ module Pedicel
       raise Pedicel::AesKeyError, 'wrong key'
     end
 
-    def decrypt_aes_gem(key)
+    private def decrypt_aes_gem(key)
       require 'aes256gcm_decrypt'
 
       Aes256GcmDecrypt.decrypt(encrypted_data, key)
     rescue Aes256GcmDecrypt::Error => e
       raise Pedicel::AesKeyError, "decryption failed: #{e}"
     end
-    public
 
     def valid_signature?(now: Time.now)
       !!verify_signature(now: now)
