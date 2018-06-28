@@ -3,7 +3,7 @@ require 'pedicel/base'
 module Pedicel
   class EC < Base
     def ephemeral_public_key
-      Base64.decode64(@token['header']['ephemeralPublicKey'])
+      Base64.decode64(@token[:header][:ephemeralPublicKey])
     end
 
     def decrypt(symmetric_key: nil, merchant_id: nil, certificate: nil, private_key: nil,
@@ -40,7 +40,7 @@ module Pedicel
 
       shared_secret = shared_secret(private_key: private_key)
 
-      merchant_id ||= self.class.merchant_id(certificate: certificate)
+      merchant_id ||= self.class.merchant_id(certificate: certificate, mid_oid: @config[:oid_merchant_identifier_field])
 
       self.class.symmetric_key(shared_secret: shared_secret, merchant_id: merchant_id)
     end
@@ -111,7 +111,7 @@ module Pedicel
       sha256.digest
     end
 
-    def self.merchant_id(certificate:, config: Pedicel::DEFAULT_CONFIG)
+    def self.merchant_id(certificate:, mid_oid: Pedicel::DEFAULT_CONFIG[:oid_merchant_identifier_field])
       begin
         cert = OpenSSL::X509::Certificate.new(certificate)
       rescue => e
@@ -121,7 +121,7 @@ module Pedicel
       merchant_id_hex =
         cert
         .extensions
-        .find { |x| x.oid == config[:oid_merchant_identifier_field] }
+        .find { |x| x.oid == mid_oid }
         &.value # Hex encoded Merchant ID plus perhaps extra non-hex chars.
         &.delete('^[0-9a-fA-F]') # Remove non-hex chars.
 
