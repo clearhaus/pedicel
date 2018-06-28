@@ -66,8 +66,7 @@ module Pedicel
       end
     end
 
-    private
-    def decrypt_aes_openssl(key)
+    private def decrypt_aes_openssl(key)
       cipher = OpenSSL::Cipher.new(symmetric_algorithm)
       cipher.decrypt
 
@@ -94,14 +93,13 @@ module Pedicel
       raise Pedicel::AesKeyError, 'wrong key'
     end
 
-    def decrypt_aes_gem(key)
+    private def decrypt_aes_gem(key)
       require 'aes256gcm_decrypt'
 
       Aes256GcmDecrypt.decrypt(encrypted_data, key)
     rescue Aes256GcmDecrypt::Error => e
       raise Pedicel::AesKeyError, "decryption failed: #{e}"
     end
-    public
 
     def valid_signature?(now: Time.now)
       !!verify_signature(now: now)

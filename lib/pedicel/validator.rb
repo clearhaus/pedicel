@@ -145,6 +145,8 @@ module Pedicel
     class Error < StandardError; end
 
     module InstanceMethods
+      attr_reader :output
+
       def validate
         @validation ||= @schema.call(@input)
 
@@ -154,8 +156,6 @@ module Pedicel
 
         raise Error, "validation error: #{@validation.errors.keys.join(', ')}"
       end
-
-      attr_reader :output
 
       def valid?
         validate
