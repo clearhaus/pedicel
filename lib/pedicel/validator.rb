@@ -26,7 +26,7 @@ module Pedicel
       }.freeze
 
       # Support Ruby 2.3, but use the faster #match? when available.
-      match_b = String.new.respond_to?(:match?) ? lambda{|s, re| s.match?(re)} : lambda{|s, re| !!(s =~ re)}
+      match_b = String.new.respond_to?(:match?) ? ->(s, re) { s.match?(re) } : ->(s, re) { !!(s =~ re) }
 
       predicate(:base64?) do |x|
         str?(x) &&
