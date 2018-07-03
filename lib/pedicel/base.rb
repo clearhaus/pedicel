@@ -196,30 +196,21 @@ module Pedicel
     end
 
     def self.verify_x509_chain(root:, intermediate:, leaf:)
-      store = OpenSSL::X509::Store.new.add_cert(root)
+      # Specifically, ensure that the signature was created using the private
+      # key corresponding to the leaf certificate, that the leaf certificate is
+      # signed by the intermediate CA, and that the intermediate CA is signed by
+      # the Apple Root CA - G3.
 
-      unless store.verify(root)
-        raise SignatureError, "invalid chain due to root: #{store.error_string}"
+      unless root.verify(root.public_key)
+        raise SignatureError, 'invalid chain due to root'
       end
 
-      unless store.verify(intermediate)
-        raise SignatureError, "invalid chain due to intermediate: #{store.error_string}"
+      unless intermediate.verify(root.public_key)
+        raise SignatureError, 'invalid chain due to intermediate'
       end
 
-      begin
-        store.add_cert(intermediate)
-      rescue OpenSSL::X509::StoreError
-        raise SignatureError, "invalid chain due to intermediate"
-      end
-
-      begin
-        store.add_cert(leaf)
-      rescue OpenSSL::X509::StoreError
-        raise SignatureError, "invalid chain due to leaf"
-      end
-
-      unless store.verify(leaf)
-        raise SignatureError, "invalid chain due to leaf: #{store.error_string}"
+      unless leaf.verify(intermediate.public_key)
+        raise SignatureError, 'invalid chain due to leaf'
       end
 
       true
