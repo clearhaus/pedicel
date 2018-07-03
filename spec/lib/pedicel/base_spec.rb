@@ -8,10 +8,10 @@ describe 'Pedicel::Base' do
 
   let (:token) { PedicelPay::Token.new.sample }
 
+  let (:config) { Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem) }
+
   let (:pedicel) do
     backend.encrypt_and_sign(token, recipient: client)
-
-    config = Pedicel::DEFAULT_CONFIG.merge(trusted_ca_pem: backend.ca_certificate.to_pem)
 
     Pedicel::EC.new(token.to_hash, config: config)
   end
