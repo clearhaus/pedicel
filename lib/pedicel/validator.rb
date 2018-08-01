@@ -50,7 +50,7 @@ module Pedicel
 
       predicate(:yymmdd?) { |x| str?(x) && match_b.(x, /\A\d{6}\z/) }
 
-      predicate(:eci?) { |x| str?(x) && match_b.(x, /\A\d{2}\z/) }
+      predicate(:eci?) { |x| str?(x) && match_b.(x, /\A\d{1,2}\z/) }
 
       predicate(:ec_public_key?) { |x| base64?(x) && OpenSSL::PKey::EC.new(Base64.decode64(x)).check_key rescue false }
 

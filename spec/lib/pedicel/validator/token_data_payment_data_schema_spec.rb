@@ -51,8 +51,13 @@ describe 'Pedicel::Validator::TokenDataPaymentDataSchema' do
       is_expected.to satisfy_schema(tdpds)
     end
 
+    it 'must be filled when present' do
+      token_data_payment_data_h[:eciIndicator] = ''
+      is_expected.to dissatisfy_schema(tdpds, eciIndicator: ['must be filled'])
+    end
+
     it 'errs when invalid' do
-      %w[1 123 1A].each do |invalid_value|
+      ['123', '1A'].each do |invalid_value|
         token_data_payment_data_h[:eciIndicator] = invalid_value
 
         is_expected.to dissatisfy_schema(tdpds, eciIndicator: ['must be an ECI'])
