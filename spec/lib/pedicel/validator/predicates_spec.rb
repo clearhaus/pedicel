@@ -140,13 +140,16 @@ describe Pedicel::Validator::Predicates do
 
     it 'is true for valid ECIs' do
       expect(eci?('05')).to be true
+      expect(eci?('5')).to be true
       expect(eci?('06')).to be true
+      expect(eci?('6')).to be true
       expect(eci?('07')).to be true
+      expect(eci?('7')).to be true
     end
 
     it 'is false for ECIs of wrong length' do
+      expect(eci?('')).to    be false
       expect(eci?('005')).to be false
-      expect(eci?('5')).to   be false
       expect(eci?(' 05')).to be false
     end
 
