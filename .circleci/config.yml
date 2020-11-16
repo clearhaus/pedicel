@@ -13,18 +13,13 @@ common_steps: &common_steps
       command: bundle exec rake test
 
 jobs:
-  ruby233:
+  ruby255:
     docker:
-      - image: ruby:2.3.3
-    steps: *common_steps
-  ruby237:
-    docker:
-      - image: ruby:2.3.7
+      - image: ruby:2.5.5
     steps: *common_steps
 
 workflows:
   version: 2
   build:
     jobs:
-      - ruby233
-      - ruby237
+      - ruby255
