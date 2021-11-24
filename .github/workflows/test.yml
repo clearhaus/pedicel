@@ -1,20 +1,22 @@
 name: Test
 on:
   - push
+  - pull_request
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        ruby: [2.5]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Install Ruby
-      uses: actions/setup-ruby@v1
-      with:
-        ruby-version: 2.5
-
     - name: Run tests
-      id: run-tests
-      run: |
-        bundle install
-        bundle exec rake test
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+        bundler-cache: true
+    - run: bundle exec rake
