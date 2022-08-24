@@ -14,9 +14,11 @@ Gem::Specification.new do |s|
 
   s.files = Dir.glob("lib/**/*.rb")
 
-  s.add_runtime_dependency 'dry-validation', '~> 0.11.1'
+  s.add_runtime_dependency 'dry-validation', '~> 0.13'
+  s.add_runtime_dependency 'dry-schema', '~> 0.1.0'
+  s.add_runtime_dependency 'dry-logic', '~> 0.5'
 
-  s.required_ruby_version = '~> 2.5.5'
+  s.required_ruby_version = '~> 2.7.4'
 
   s.add_development_dependency 'rake', '~> 12.3'
   s.add_development_dependency 'rspec', '~> 3.7'

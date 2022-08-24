@@ -1,4 +1,6 @@
 require 'dry-validation'
+require 'dry-schema'
+require 'dry-logic'
 require 'base64'
 require 'openssl'
 
