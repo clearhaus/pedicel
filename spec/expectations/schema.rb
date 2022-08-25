@@ -17,35 +17,39 @@ end
 RSpec::Matchers.define :dissatisfy_schema do |expected, mismatches|
   match do |actual|
     check = expected.call(actual)
-
     @mismatches = mismatches
-    @errors = check.errors
-
-    return false if check.success?
 
     return true unless mismatches
+    return false if check.success?
 
-    return false unless check.errors.keys.sort == mismatches.keys.sort
+    @error_text = check.errors.messages[0].text
+    @error_path = check.errors.messages[0].path[0]
+    @errors = { @error_path => [@error_text] }
 
-    check.errors.sort.zip(mismatches.sort).each do |error, mismatch|
-      # Check key
-      return false unless error.first == mismatch.first
+    return false unless mismatches[@error_path] == [@error_text]
 
-      # Check messages
-      next unless mismatch.last.is_a?(Array)
-      return false if error.last.length > mismatch.last.length
+    # return false unless check.errors.messages.sort[0].text == mismatches.keys[0]
+    # return false unless check.errors.messages.sort[0].path[0] == mismatches.keys[1]
 
-      error.last.zip(mismatch.last).each do |error_message, mismatch_message|
-        case mismatch_message
-        when String
-          return false unless error_message == mismatch_message
-        when Regexp
-          return false unless error_message =~ mismatch_message
-        else
-          fail "unknown match type for '#{mismatch_message}'"
-        end
-      end
-    end
+    # check.errors.sort.zip(mismatches.sort).each do |error, mismatch|
+    #   # Check key
+    #   return false unless error.first == mismatch.first
+
+    #   # Check messages
+    #   next unless mismatch.last.is_a?(Array)
+    #   return false if error.last.length > mismatch.last.length
+
+    #   error.last.zip(mismatch.last).each do |error_message, mismatch_message|
+    #     case mismatch_message
+    #     when String
+    #       return false unless error_message == mismatch_message
+    #     when Regexp
+    #       return false unless error_message =~ mismatch_message
+    #     else
+    #       fail "unknown match type for '#{mismatch_message}'"
+    #     end
+    #   end
+    # end
 
     true
   end
