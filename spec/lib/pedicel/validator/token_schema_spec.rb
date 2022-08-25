@@ -39,7 +39,7 @@ describe 'Pedicel::Validator::TokenSchema' do
   context 'signature' do
     it 'errs when invalid' do
       token_h[:signature] = 'invalid signature'
-      is_expected.to dissatisfy_schema(ts, signature: nil)
+      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64'])
     end
 
     it 'errs when missing' do
@@ -61,7 +61,7 @@ describe 'Pedicel::Validator::TokenSchema' do
   context 'version' do
     it 'errs when invalid' do
       token_h[:version] = 'invalid version'
-      is_expected.to dissatisfy_schema(ts, version: nil)
+      is_expected.to dissatisfy_schema(ts, version: ['must be one of: EC_v1, RSA_v1'])
     end
 
     it 'errs when missing' do

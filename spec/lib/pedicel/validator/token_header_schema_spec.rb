@@ -38,7 +38,7 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
   context 'ephemeralPublicKey' do
     it 'errs when invalid' do
       header_h[:ephemeralPublicKey] = 'invalid ephemeralPublicKey'
-      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: nil)
+      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['must be Base64'])
     end
     it 'errs when not a string' do
       header_h[:ephemeralPublicKey] = 123
