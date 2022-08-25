@@ -10,43 +10,24 @@ module Pedicel
   # https://developer.apple.com/library/content/documentation/PassKit/Reference/PaymentTokenJSON/PaymentTokenJSON.html
   # This purposefully only does syntactic validation (as opposed to semantic).
   module Validator
+    CUSTOM_ERRORS = {
+      is_base64:          'must be Base64',
+      is_hex:             'must be hex',
+      is_pan:             'must be a pan',
+      is_yymmdd:          'must be formatted YYMMDD',
+      is_ec_public_key:   'must be an EC public key',
+      is_pkcs7_signature: 'must be a PKCS7 Signature',
+      is_eci:             'must be an ECI',
+      is_hex_sha256:      'must be a hex-encoded SHA-256',
+      is_base64_sha256:   'must be a Base64-encoded SHA-256',
+      is_iso4217_numeric: 'must be an ISO 4217 numeric code',
+    }.freeze
 
     module Predicates
       include Dry::Logic::Predicates
-
-      CUSTOM_PREDICATE_ERRORS = {
-        base64?:          'must be Base64',
-        hex?:             'must be hex',
-        pan?:             'must be a pan',
-        yymmdd?:          'must be formatted YYMMDD',
-        ec_public_key?:   'must be an EC public key',
-        pkcs7_signature?: 'must be a PKCS7 Signature',
-        eci?:             'must be an ECI',
-        hex_sha256?:      'must be a hex-encoded SHA-256',
-        base64_sha256?:   'must be a Base64-encoded SHA-256',
-        iso4217_numeric?: 'must be an ISO 4217 numeric code',
-      }.freeze
-
-      # Support Ruby 2.3, but use the faster #match? when available.
-      match_b = String.new.respond_to?(:match?) ? ->(s, re) { s.match?(re) } : ->(s, re) { !!(s =~ re) }
-
-      predicate(:base64?) do |x|
-        str?(x) &&
-          match_b.(x, /\A[=A-Za-z0-9+\/]*\z/) && # allowable chars
-          x.length.remainder(4).zero? && # multiple of 4
-          !match_b.(x, /=[^$=]/) && # may only end with ='s
-          !match_b.(x, /===/) # at most 2 ='s
-      end
-
       # We should figure out how strict we should be. Hopefully we can discard
       # the above Base64? predicate and use the following simpler one:
       #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
-
-      predicate(:base64_sha256?) { |x| base64?(x) && Base64.decode64(x).length == 32 }
-
-      predicate(:hex?) { |x| str?(x) && match_b.(x, /\A[a-f0-9]*\z/i) }
-
-      predicate(:hex_sha256?) { |x| hex?(x) && x.length == 64 }
 
       predicate(:pan?) { |x| str?(x) && match_b.(x, /\A[1-9][0-9]{11,18}\z/) }
 
@@ -61,59 +42,114 @@ module Pedicel
       predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
     end
 
-    # class BaseSchema < Dry::Validation::Schema::JSON
-    # end
-
-
-
-    is_hex = -> (x) { /\A[a-f0-9]*\z/i.match(x) }
-
-    class BaseSchema < Dry::Schema::JSON
-      config do
-        configure
-        def self.messages
-          super.merge(en: { errors: Predicates::CUSTOM_PREDICATE_ERRORS })
+    Dry::Validation.register_macro(:is_hex) do
+      if key?
+        unless /\A[a-f0-9]*\z/i.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_hex])
         end
       end
     end
 
-    class TokenHeaderSchemaKlass < BaseSchema
-      define do
-        required(:transactionId).filled(&is_hex)
-        # optional(:applicationData).filled(:str?, :hex?, :hex_sha256?)
-
-        # optional(:ephemeralPublicKey).filled(:str?, :base64?, :ec_public_key?)
-
-        # optional(:wrappedKey).filled(:str?, :base64?)
-
-        # rule('ephemeralPublicKey xor wrappedKey': [:ephemeralPublicKey, :wrappedKey]) do |e, w|
-        #   e.filled? ^ w.filled?
-        # end
-
-        # required(:publicKeyHash).filled(:str?, :base64?, :base64_sha256?)
-
+    Dry::Validation.register_macro(:is_hex_sha256) do
+      if key?
+        unless :is_hex && value.length == 64
+          key.failure(CUSTOM_ERRORS[:is_hex_sha256])
+        end
       end
     end
 
+    Dry::Validation.register_macro(:is_base64) do
+      if key?
+        unless /\A[=A-Za-z0-9+\/]*\z/.match?(value) &&
+               value.length.remainder(4).zero? &&
+               !/=[^$=]/.match?(value) &&
+               !/===/.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_base64])
+        end
+      end
+    end
 
+    Dry::Validation.register_macro(:is_base64_sha256) do
+      if key?
+        unless :is_base64 && Base64.decode64(value).length == 32
+          key.failure(CUSTOM_ERRORS[:is_base64_sha256])
+        end
+      end
+    end
+
+    Dry::Validation.register_macro(:is_ec_public_key) do
+      if key?
+        ec = lambda {OpenSSL::PKey::EC.new(Base64.decode64(value)).check_key rescue false}.()
+        unless :is_base64 && ec
+          key.failure(CUSTOM_ERRORS[:is_ec_public_key])
+        end
+      end
+    end
+    Dry::Validation.register_macro(:is_pkcs7_signature) do
+      if key?
+        ec = lambda {!!OpenSSL::PKCS7.new(Base64.decode64(value)) rescue false}.()
+        unless :is_base64 && ec
+          key.failure(CUSTOM_ERRORS[:is_pkcs7_signature])
+        end
+      end
+    end
+
+    class TokenHeaderSchemaKlass < Dry::Validation::Contract
+      json do
+        optional(:applicationData).filled(:str?)
+
+        optional(:ephemeralPublicKey).filled(:str?)
+
+        optional(:wrappedKey).filled(:str?)
+
+
+        required(:publicKeyHash).filled(:str?)
+        required(:transactionId).filled(:str?)
+      end
+      rule(:applicationData).validate(:is_hex, :is_hex_sha256)
+
+      rule(:ephemeralPublicKey).validate(:is_base64, :is_ec_public_key)
+      rule(:publicKeyHash).validate(:is_base64, :is_base64_sha256)
+      rule(:wrappedKey).validate(:is_base64)
+      rule(:transactionId).validate(:is_hex)
+      rule(:ephemeralPublicKey, :wrappedKey) do
+        key.failure('ephemeralPublicKey xor wrappedKey') unless values[:ephemeralPublicKey].nil? ^ values[:wrappedKey].nil?
+      end
+    end
     TokenHeaderSchema = TokenHeaderSchemaKlass.new
-    # TokenSchema = Dry::Validation.Schema(BaseSchema) do
-    #   required(:data).filled(:str?, :base64?)
 
-    #   required(:header).schema(TokenHeaderSchema)
+    class TokenSchemaKlass < Dry::Validation::Contract
+      json do
+      required(:data).filled(:str?)
 
-    #   required(:signature).filled(:str?, :base64?, :pkcs7_signature?)
+      required(:header).schema(TokenHeaderSchemaKlass.schema)
+      required(:header).value(:hash?)
 
-    #   required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
-    # end
+      required(:signature).filled(:str?)
 
-    # TokenDataPaymentDataSchema = Dry::Validation.Schema(BaseSchema) do
-    #   optional(:onlinePaymentCryptogram).filled(:str?, :base64?)
-    #   optional(:eciIndicator).filled(:str?, :eci?)
+      required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
 
-    #   optional(:emvData).filled(:str?, :base64?)
-    #   optional(:encryptedPINData).filled(:str?, :hex?)
-    # end
+      end
+      rule(:data).validate(:is_base64)
+      rule(:signature).validate(:is_base64, :is_pkcs7_signature)
+    end
+
+    TokenSchema = TokenSchemaKlass.new
+    class TokenDataPaymentDataSchemaKlass < Dry::Validation::Contract
+      json do
+        optional(:onlinePaymentCryptogram).filled(:str?)
+        optional(:eciIndicator).filled(:str?, :eci?)
+
+        optional(:emvData).filled(:str?)
+        optional(:encryptedPINData).filled(:str?)
+      end
+      rule(:onlinePaymentCryptogram).validate(:is_base64)
+      rule(:eciIndicator).validate(:is_eci)
+
+      rule(:emvData).validate(:is_base64)
+      rule(:encryptedPINData).validate(:is_hex)
+    end
+    TokenDataPaymentDataSchema = TokenDataPaymentDataSchemaKlass.new
 
     # TokenDataSchema = Dry::Validation.Schema(BaseSchema) do
     #   required(:applicationPrimaryAccountNumber).filled(:str?, :pan?)
