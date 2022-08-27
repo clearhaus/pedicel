@@ -25,23 +25,8 @@ module Pedicel
 
     module Predicates
       include Dry::Logic::Predicates
-      # We should figure out how strict we should be. Hopefully we can discard
-      # the above Base64? predicate and use the following simpler one:
-      #predicate(:strict_base64?) { |x| !!Base64.strict_decode64(x) rescue false }
-
-      predicate(:pan?) { |x| str?(x) && match_b.(x, /\A[1-9][0-9]{11,18}\z/) }
-
-      predicate(:yymmdd?) { |x| str?(x) && match_b.(x, /\A\d{6}\z/) }
-
-      predicate(:eci?) { |x| str?(x) && match_b.(x, /\A\d{1,2}\z/) }
-
-      predicate(:ec_public_key?) { |x| base64?(x) && OpenSSL::PKey::EC.new(Base64.decode64(x)).check_key rescue false }
-
-      predicate(:pkcs7_signature?) { |x| base64?(x) && !!OpenSSL::PKCS7.new(Base64.decode64(x)) rescue false }
-
       predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
     end
-
     Dry::Validation.register_macro(:is_hex) do
       if key?
         unless /\A[a-f0-9]*\z/i.match?(value)
@@ -49,7 +34,6 @@ module Pedicel
         end
       end
     end
-
     Dry::Validation.register_macro(:is_hex_sha256) do
       if key?
         unless :is_hex && value.length == 64
@@ -57,7 +41,6 @@ module Pedicel
         end
       end
     end
-
     Dry::Validation.register_macro(:is_base64) do
       if key?
         unless /\A[=A-Za-z0-9+\/]*\z/.match?(value) &&
@@ -68,7 +51,6 @@ module Pedicel
         end
       end
     end
-
     Dry::Validation.register_macro(:is_base64_sha256) do
       if key?
         unless :is_base64 && Base64.decode64(value).length == 32
@@ -76,7 +58,6 @@ module Pedicel
         end
       end
     end
-
     Dry::Validation.register_macro(:is_ec_public_key) do
       if key?
         ec = lambda {OpenSSL::PKey::EC.new(Base64.decode64(value)).check_key rescue false}.()
@@ -90,6 +71,34 @@ module Pedicel
         ec = lambda {!!OpenSSL::PKCS7.new(Base64.decode64(value)) rescue false}.()
         unless :is_base64 && ec
           key.failure(CUSTOM_ERRORS[:is_pkcs7_signature])
+        end
+      end
+    end
+    Dry::Validation.register_macro(:is_eci) do
+      if key?
+        unless  /\A\d{1,2}\z/.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_eci])
+        end
+      end
+    end
+    Dry::Validation.register_macro(:is_pan) do
+      if key?
+        unless  /\A[1-9][0-9]{11,18}\z/.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_pan])
+        end
+      end
+    end
+    Dry::Validation.register_macro(:is_yymmdd) do
+      if key?
+        unless  /\A\d{6}\z/.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_yymmdd])
+        end
+      end
+    end
+    Dry::Validation.register_macro(:is_iso4217_numeric) do
+      if key?
+        unless  /\A\d{6}\z/.match?(value)
+          key.failure(CUSTOM_ERRORS[:is_iso4217_numeric])
         end
       end
     end
@@ -120,25 +129,25 @@ module Pedicel
 
     class TokenSchemaKlass < Dry::Validation::Contract
       json do
-      required(:data).filled(:str?)
+        required(:data).filled(:str?)
 
-      required(:header).schema(TokenHeaderSchemaKlass.schema)
-      required(:header).value(:hash?)
+        required(:header).schema(TokenHeaderSchemaKlass.schema)
+        required(:header).value(:hash?)
 
-      required(:signature).filled(:str?)
+        required(:signature).filled(:str?)
 
-      required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
+        required(:version).filled(:str?, included_in?: %w[EC_v1 RSA_v1])
 
       end
       rule(:data).validate(:is_base64)
       rule(:signature).validate(:is_base64, :is_pkcs7_signature)
     end
-
     TokenSchema = TokenSchemaKlass.new
+
     class TokenDataPaymentDataSchemaKlass < Dry::Validation::Contract
       json do
         optional(:onlinePaymentCryptogram).filled(:str?)
-        optional(:eciIndicator).filled(:str?, :eci?)
+        optional(:eciIndicator).filled(:str?)
 
         optional(:emvData).filled(:str?)
         optional(:encryptedPINData).filled(:str?)
@@ -150,48 +159,117 @@ module Pedicel
       rule(:encryptedPINData).validate(:is_hex)
     end
     TokenDataPaymentDataSchema = TokenDataPaymentDataSchemaKlass.new
+    class TokenDataSchemaKlass < Dry::Validation::Contract
+      json do
+        required(:applicationPrimaryAccountNumber).filled(:str?)
 
-    # TokenDataSchema = Dry::Validation.Schema(BaseSchema) do
-    #   required(:applicationPrimaryAccountNumber).filled(:str?, :pan?)
+        required(:applicationExpirationDate).filled(:str?)
 
-    #   required(:applicationExpirationDate).filled(:str?, :yymmdd?)
+        required(:currencyCode).filled(:str?)
 
-    #   required(:currencyCode).filled(:str?, :iso4217_numeric?)
+        required(:transactionAmount).filled(:int?)
 
-    #   required(:transactionAmount).filled(:int?)
+        optional(:cardholderName).filled(:str?)
 
-    #   optional(:cardholderName).filled(:str?)
+        required(:deviceManufacturerIdentifier).filled(:str?)
 
-    #   required(:deviceManufacturerIdentifier).filled(:str?, :hex?)
+        required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
 
-    #   required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
+        required(:paymentData).schema(TokenDataPaymentDataSchemaKlass.schema)
+      end
+      rule(:applicationPrimaryAccountNumber).validate(:is_pan)
 
-    #   required(:paymentData).schema(TokenDataPaymentDataSchema)
+      rule(:applicationExpirationDate).validate(:is_yymmdd)
 
-    #   rule('when paymentDataType is 3DSecure, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
-    #     type.eql?('3DSecure') > cryptogram.filled?
-    #   end
-    #   rule('when paymentDataType is 3DSecure, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
-    #     type.eql?('3DSecure') > emv.none?
-    #   end
-    #   rule('when paymentDataType is 3DSecure, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
-    #     type.eql?('3DSecure') > pin.none?
-    #   end
+      rule(:currencyCode).validate(:is_iso4217_numeric)
 
-    #   rule('when paymentDataType is EMV, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
-    #     type.eql?('EMV') > cryptogram.none?
-    #   end
-    #   rule('when paymentDataType is EMV, eciIndicator': [:paymentDataType, [:paymentData, :eciIndicator]]) do |type, eci|
-    #     type.eql?('EMV') > eci.none?
-    #   end
-    #   rule('when paymentDataType is EMV, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
-    #     type.eql?('EMV') > emv.filled?
-    #   end
-    #   rule('when paymentDataType is EMV, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
-    #     type.eql?('EMV') > pin.filled?
-    #   end
+      rule(:deviceManufacturerIdentifier).validate(:is_hex)
 
-    # end
+      rule(:paymentDataType, paymentData: :onlinePaymentCryptogram) do
+        # rule('when paymentDataType is 3DSecure, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
+        #   type can only be 3DSecure if cryptogram is filled
+        #   type.eql?('3DSecure') > cryptogram.filled?
+        # end
+        key.failure('when paymentDataType is 3DSecure, onlinePaymentCryptogram') unless
+          if values[:paymentDataType].eql?('3DSecure')
+            values[:paymentData] && values[:paymentData][:onlinePaymentCryptogram]
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :emvData) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is 3DSecure, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
+        #   type.eql?('3DSecure') > emv.none?
+        # end
+        key.failure('when paymentDataType is 3DSecure, emvData') unless
+          if values[:paymentDataType].eql?('3DSecure')
+            values[:paymentData] && values[:paymentData][:emvData].nil?
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :encryptedPINData) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is 3DSecure, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
+        #   type.eql?('3DSecure') > pin.none?
+        # end
+        key.failure('when paymentDataType is 3DSecure, encryptedPINData') unless
+          if values[:paymentDataType].eql?('3DSecure')
+            values[:paymentData] && values[:paymentData][:encryptedPINData].nil?
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :onlinePaymentCryptogram) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is EMV, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
+        #   type.eql?('EMV') > cryptogram.none?
+        # end
+        key.failure('when paymentDataType is EMV, onlinePaymentCryptogram') unless
+          if values[:paymentDataType].eql?('EMV')
+            values[:paymentData] && values[:paymentData][:onlinePaymentCryptogram]
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :eciIndicator) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is EMV, eciIndicator': [:paymentDataType, [:paymentData, :eciIndicator]]) do |type, eci|
+        #   type.eql?('EMV') > eci.none?
+        # end
+        key.failure('when paymentDataType is EMV, eciIndicator') unless
+          if values[:paymentDataType].eql?('EMV')
+            values[:paymentData] && values[:paymentData][:eciIndicator]
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :emvData) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is EMV, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
+        #   type.eql?('EMV') > emv.filled?
+        # end
+        key.failure('when paymentDataType is EMV, emvData') unless
+          if values[:paymentDataType].eql?('EMV')
+            values[:paymentData] && values[:paymentData][:emvData]
+          end
+      end
+
+      rule(:paymentDataType, paymentData: :encryptedPINData) do
+        # type can only be 3DSecure if emvData is empty
+        # old rule:
+        # rule('when paymentDataType is EMV, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
+        #   type.eql?('EMV') > pin.filled?
+        # end
+        key.failure('when paymentDataType is EMV, encryptedPINData') unless
+          if values[:paymentDataType].eql?('EMV')
+            values[:paymentData] && values[:paymentData][:encryptedPINData]
+          end
+      end
+    end
+
+    TokenDataSchema = TokenDataSchemaKlass.new
 
     class Error < StandardError; end
 
