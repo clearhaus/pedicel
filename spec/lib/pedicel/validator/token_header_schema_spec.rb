@@ -64,7 +64,7 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
 
     it 'errs when not Base64' do
       header_h[:wrappedKey] = 'invalid wrappedKey'
-      is_expected.to dissatisfy_schema(ths, wrappedKey: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ths, {wrappedKey: ['must be Base64'], :ephemeralPublicKey=>["ephemeralPublicKey xor wrappedKey"]})
     end
   end
 

@@ -20,6 +20,7 @@ RSpec::Matchers.define :dissatisfy_schema do |expected, mismatches|
     check = expected.call(actual)
 
     @mismatches = mismatches
+
     @errors = check.errors.to_h
 
     return false if check.success?
@@ -27,6 +28,10 @@ RSpec::Matchers.define :dissatisfy_schema do |expected, mismatches|
     return true unless mismatches
 
     return false unless @errors.keys.include? mismatches.keys.first
+
+    @errors.values.each do |error|
+      return false unless mismatches.values.include? error
+    end
 
     mismatches.values.each do |mismatch|
       return false unless @errors.values.include? mismatch
