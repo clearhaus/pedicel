@@ -23,10 +23,6 @@ module Pedicel
       is_iso4217_numeric: 'must be an ISO 4217 numeric code',
     }.freeze
 
-    module Predicates
-      include Dry::Logic::Predicates
-      predicate(:iso4217_numeric?) { |x| match_b.(x, /\A[0-9]{3}\z/) }
-    end
     Dry::Validation.register_macro(:is_hex) do
       if key?
         unless /\A[a-f0-9]*\z/i.match?(value)
@@ -97,7 +93,7 @@ module Pedicel
     end
     Dry::Validation.register_macro(:is_iso4217_numeric) do
       if key?
-        unless  /\A\d{6}\z/.match?(value)
+        unless  /\A[0-9]{3}\z/.match?(value)
           key.failure(CUSTOM_ERRORS[:is_iso4217_numeric])
         end
       end
@@ -279,11 +275,11 @@ module Pedicel
       def validate
         @validation ||= @schema.call(@input)
 
-        @output = @validation.output
+        @output = @validation.to_h
 
         return true if @validation.success?
 
-        raise Error, "validation error: #{@validation.errors.keys.join(', ')}"
+        raise Error, "validation error: #{@validation.errors.to_h.keys.join(', ')}"
       end
 
       def valid?
@@ -295,7 +291,7 @@ module Pedicel
       def errors
         valid? unless @validation
 
-        @validation.errors
+        @validation.errors.to_h.sort
       end
 
       def errors_formatted(node = [errors])
