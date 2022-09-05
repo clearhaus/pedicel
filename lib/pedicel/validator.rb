@@ -190,10 +190,10 @@ module Pedicel
         #   type can only be 3DSecure if cryptogram is filled
         #   type.eql?('3DSecure') > cryptogram.filled?
         # end
-        key.failure('when paymentDataType is 3DSecure, onlinePaymentCryptogram') unless
-          if values[:paymentDataType].eql?('3DSecure')
+        if values[:paymentDataType].eql?('3DSecure')
+          key.failure('when paymentDataType is 3DSecure, onlinePaymentCryptogram must be filled') unless
             values[:paymentData] && values[:paymentData][:onlinePaymentCryptogram]
-          end
+        end
       end
 
       rule(:paymentDataType, paymentData: :emvData) do
@@ -202,10 +202,10 @@ module Pedicel
         # rule('when paymentDataType is 3DSecure, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
         #   type.eql?('3DSecure') > emv.none?
         # end
-        key.failure('when paymentDataType is 3DSecure, emvData') unless
-          if values[:paymentDataType].eql?('3DSecure')
+        if values[:paymentDataType].eql?('3DSecure')
+          key.failure('when paymentDataType is 3DSecure, emvData cannot be defined') unless
             values[:paymentData] && values[:paymentData][:emvData].nil?
-          end
+        end
       end
 
       rule(:paymentDataType, paymentData: :encryptedPINData) do
@@ -214,10 +214,10 @@ module Pedicel
         # rule('when paymentDataType is 3DSecure, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
         #   type.eql?('3DSecure') > pin.none?
         # end
-        key.failure('when paymentDataType is 3DSecure, encryptedPINData') unless
-          if values[:paymentDataType].eql?('3DSecure')
+        if values[:paymentDataType].eql?('3DSecure')
+          key.failure('when paymentDataType is 3DSecure, encryptedPINData cannot be defined') unless
             values[:paymentData] && values[:paymentData][:encryptedPINData].nil?
-          end
+        end
       end
 
       rule(:paymentDataType, paymentData: :onlinePaymentCryptogram) do
@@ -226,10 +226,10 @@ module Pedicel
         # rule('when paymentDataType is EMV, onlinePaymentCryptogram': [:paymentDataType, [:paymentData, :onlinePaymentCryptogram]]) do |type, cryptogram|
         #   type.eql?('EMV') > cryptogram.none?
         # end
-        key.failure('when paymentDataType is EMV, onlinePaymentCryptogram') unless
-          if values[:paymentDataType].eql?('EMV')
-            values[:paymentData] && values[:paymentData][:onlinePaymentCryptogram]
-          end
+        if values[:paymentDataType].eql?('EMV')
+          key.failure('when paymentDataType is EMV, onlinePaymentCryptogram cannot be defined') unless
+            values[:paymentData] && values[:paymentData][:onlinePaymentCryptogram].nil?
+        end
       end
 
       rule(:paymentDataType, paymentData: :eciIndicator) do
@@ -238,10 +238,10 @@ module Pedicel
         # rule('when paymentDataType is EMV, eciIndicator': [:paymentDataType, [:paymentData, :eciIndicator]]) do |type, eci|
         #   type.eql?('EMV') > eci.none?
         # end
-        key.failure('when paymentDataType is EMV, eciIndicator') unless
-          if values[:paymentDataType].eql?('EMV')
-            values[:paymentData] && values[:paymentData][:eciIndicator]
-          end
+        if values[:paymentDataType].eql?('EMV')
+          key.failure('when paymentDataType is EMV, eciIndicator cannot be defined') unless
+            values[:paymentData] && values[:paymentData][:eciIndicator].nil?
+        end
       end
 
       rule(:paymentDataType, paymentData: :emvData) do
@@ -250,10 +250,10 @@ module Pedicel
         # rule('when paymentDataType is EMV, emvData': [:paymentDataType, [:paymentData, :emvData]]) do |type, emv|
         #   type.eql?('EMV') > emv.filled?
         # end
-        key.failure('when paymentDataType is EMV, emvData') unless
-          if values[:paymentDataType].eql?('EMV')
+        if values[:paymentDataType].eql?('EMV')
+          key.failure('when paymentDataType is EMV, emvData must be filled') unless
             values[:paymentData] && values[:paymentData][:emvData]
-          end
+        end
       end
 
       rule(:paymentDataType, paymentData: :encryptedPINData) do
@@ -262,10 +262,10 @@ module Pedicel
         # rule('when paymentDataType is EMV, encryptedPINData': [:paymentDataType, [:paymentData, :encryptedPINData]]) do |type, pin|
         #   type.eql?('EMV') > pin.filled?
         # end
-        key.failure('when paymentDataType is EMV, encryptedPINData') unless
-          if values[:paymentDataType].eql?('EMV')
+        if values[:paymentDataType].eql?('EMV')
+          key.failure('when paymentDataType is EMV, encryptedPINData must be filled') unless
             values[:paymentData] && values[:paymentData][:encryptedPINData]
-          end
+        end
       end
     end
 
