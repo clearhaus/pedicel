@@ -30,6 +30,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_hex_sha256) do
       if key?
         unless :is_hex && value.length == 64
@@ -37,6 +38,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_base64) do
       if key?
         unless /\A[=A-Za-z0-9+\/]*\z/.match?(value) &&
@@ -47,6 +49,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_base64_sha256) do
       if key?
         unless :is_base64 && Base64.decode64(value).length == 32
@@ -54,6 +57,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_ec_public_key) do
       if key?
         ec = lambda {OpenSSL::PKey::EC.new(Base64.decode64(value)).check_key rescue false}.()
@@ -62,6 +66,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_pkcs7_signature) do
       if key?
         ec = lambda {!!OpenSSL::PKCS7.new(Base64.decode64(value)) rescue false}.()
@@ -70,6 +75,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_eci) do
       if key?
         unless  /\A\d{1,2}\z/.match?(value)
@@ -77,6 +83,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_pan) do
       if key?
         unless  /\A[1-9][0-9]{11,18}\z/.match?(value)
@@ -84,6 +91,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_yymmdd) do
       if key?
         unless  /\A\d{6}\z/.match?(value)
@@ -91,6 +99,7 @@ module Pedicel
         end
       end
     end
+
     Dry::Validation.register_macro(:is_iso4217_numeric) do
       if key?
         unless  /\A[0-9]{3}\z/.match?(value)
@@ -121,9 +130,10 @@ module Pedicel
         key.failure('ephemeralPublicKey xor wrappedKey') unless values[:ephemeralPublicKey].nil? ^ values[:wrappedKey].nil?
       end
     end
+
     TokenHeaderSchema = TokenHeaderSchemaKlass.new
 
-    class TokenSchemaKlass < Dry::Validation::Contract
+    class TokenContract < Dry::Validation::Contract
       json do
         required(:data).filled(:str?)
 
@@ -138,9 +148,10 @@ module Pedicel
       rule(:data).validate(:is_base64)
       rule(:signature).validate(:is_base64, :is_pkcs7_signature)
     end
-    TokenSchema = TokenSchemaKlass.new
 
-    class TokenDataPaymentDataSchemaKlass < Dry::Validation::Contract
+    TokenSchema = TokenContract.new
+
+    class TokenDataPaymentDataContract < Dry::Validation::Contract
       json do
         optional(:onlinePaymentCryptogram).filled(:str?)
         optional(:eciIndicator).filled(:str?)
@@ -154,8 +165,10 @@ module Pedicel
       rule(:emvData).validate(:is_base64)
       rule(:encryptedPINData).validate(:is_hex)
     end
-    TokenDataPaymentDataSchema = TokenDataPaymentDataSchemaKlass.new
-    class TokenDataSchemaKlass < Dry::Validation::Contract
+
+    TokenDataPaymentDataSchema = TokenDataPaymentDataContract.new
+
+    class TokenDataContract < Dry::Validation::Contract
       json do
         required(:applicationPrimaryAccountNumber).filled(:str?)
 
@@ -171,7 +184,7 @@ module Pedicel
 
         required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
 
-        required(:paymentData).schema(TokenDataPaymentDataSchemaKlass.schema)
+        required(:paymentData).schema(TokenDataPaymentDataContract.schema)
       end
       rule(:applicationPrimaryAccountNumber).validate(:is_pan)
 
@@ -265,7 +278,7 @@ module Pedicel
       end
     end
 
-    TokenDataSchema = TokenDataSchemaKlass.new
+    TokenDataSchema = TokenDataContract.new
 
     class Error < StandardError; end
 
