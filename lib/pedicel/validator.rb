@@ -69,8 +69,8 @@ module Pedicel
 
     Dry::Validation.register_macro(:is_pkcs7_signature) do
       if key?
-        ec = lambda {!!OpenSSL::PKCS7.new(Base64.decode64(value)) rescue false}.()
-        unless :is_base64 && ec
+        pkcs7 = lambda {!!OpenSSL::PKCS7.new(Base64.decode64(value)) rescue false}.()
+        unless :is_base64 && pkcs7
           key.failure(CUSTOM_ERRORS[:is_pkcs7_signature])
         end
       end
