@@ -39,7 +39,7 @@ describe 'Pedicel::Validator::TokenSchema' do
   context 'signature' do
     it 'errs when invalid' do
       token_h[:signature] = 'invalid signature'
-      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ts, signature: ["must be Base64", "must be a PKCS7 Signature"])
     end
 
     it 'errs when missing' do
@@ -54,7 +54,7 @@ describe 'Pedicel::Validator::TokenSchema' do
 
     it 'errs when not a Base64 string' do
       token_h[:signature] = 'not Base64'
-      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ts, signature: ["must be Base64", "must be a PKCS7 Signature"])
     end
   end
 

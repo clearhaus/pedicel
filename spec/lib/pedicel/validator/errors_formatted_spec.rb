@@ -39,7 +39,7 @@ describe 'Pedicel::Validator' do
 
     expect(validator(invalid_data).errors_formatted).to eq [
       'transactionAmount must be an integer',
-      'when paymentDataType is 3DSecure, onlinePaymentCryptogram must be filled'
-    ]
+      'paymentDataType when paymentDataType is 3DSecure, onlinePaymentCryptogram must be filled'
+    ].sort
   end
 end
