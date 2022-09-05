@@ -108,7 +108,7 @@ module Pedicel
       end
     end
 
-    class TokenHeaderSchemaKlass < Dry::Validation::Contract
+    class TokenHeaderContract < Dry::Validation::Contract
       json do
         optional(:applicationData).filled(:str?)
 
@@ -131,13 +131,13 @@ module Pedicel
       end
     end
 
-    TokenHeaderSchema = TokenHeaderSchemaKlass.new
+    TokenHeaderSchema = TokenHeaderContract.new
 
     class TokenContract < Dry::Validation::Contract
       json do
         required(:data).filled(:str?)
 
-        required(:header).schema(TokenHeaderSchemaKlass.schema)
+        required(:header).schema(TokenHeaderContract.schema)
         required(:header).value(:hash?)
 
         required(:signature).filled(:str?)
