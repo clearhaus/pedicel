@@ -159,5 +159,11 @@ describe 'Pedicel::Validator::TokenDataSchema' do
         is_expected.to dissatisfy_schema(tds, paymentDataType: ["when paymentDataType is EMV, encryptedPINData must be filled"])
       end
     end
+    context 'paymentData' do
+      it 'should fail on string' do
+        token_data_h[:paymentData] = 'wrong data type'
+        is_expected.to dissatisfy_schema(tds, paymentData: ["must be a hash"])
+      end
+    end
   end
 end

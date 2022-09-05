@@ -101,4 +101,10 @@ describe 'Pedicel::Validator::TokenSchema' do
       is_expected.to dissatisfy_schema(ts, data: ['is missing'], signature: ['must be Base64'])
     end
   end
+    context 'paymentData' do
+      it 'should fail on string' do
+        token_h[:header] = 'wrong data type'
+        is_expected.to dissatisfy_schema(ts, header: ["must be a hash"])
+      end
+    end
 end

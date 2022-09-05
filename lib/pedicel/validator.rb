@@ -137,8 +137,7 @@ module Pedicel
       json do
         required(:data).filled(:str?)
 
-        required(:header).schema(TokenHeaderContract.schema)
-        required(:header).value(:hash?)
+        required(:header).hash(TokenHeaderContract.schema)
 
         required(:signature).filled(:str?)
 
@@ -184,7 +183,7 @@ module Pedicel
 
         required(:paymentDataType).filled(:str?, included_in?: %w[3DSecure EMV])
 
-        required(:paymentData).schema(TokenDataPaymentDataContract.schema)
+        required(:paymentData).hash(TokenDataPaymentDataContract.schema)
       end
       rule(:applicationPrimaryAccountNumber).validate(:is_pan)
 
