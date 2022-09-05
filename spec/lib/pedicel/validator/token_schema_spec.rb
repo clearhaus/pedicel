@@ -98,13 +98,13 @@ describe 'Pedicel::Validator::TokenSchema' do
     it 'errs when data is missing and signature is wrong' do
       token_h.delete(:data)
       token_h[:signature] = 'invalid signature'
-      is_expected.to dissatisfy_schema(ts, data: ['is missing'], signature: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ts, data: ['is missing'], signature: ['must be Base64", "must be a PKCS7 Signature'])
     end
   end
-    context 'paymentData' do
-      it 'should fail on string' do
-        token_h[:header] = 'wrong data type'
-        is_expected.to dissatisfy_schema(ts, header: ["must be a hash"])
-      end
+  context 'paymentData' do
+    it 'should fail on string' do
+      token_h[:header] = 'wrong data type'
+      is_expected.to dissatisfy_schema(ts, header: ["must be a hash"])
     end
+  end
 end

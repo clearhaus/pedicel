@@ -28,7 +28,9 @@ RSpec::Matchers.define :dissatisfy_schema do |expected, mismatches|
 
     return false unless @errors.keys.include? mismatches.keys.first
 
-    return false unless @errors.values.include? mismatches.values.first
+    mismatches.values.each do |mismatch|
+      return false unless @errors.values.include? mismatch
+    end
 
     true
   end
