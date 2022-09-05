@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        ruby: [2.5]
+        ruby: [2.7]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
