@@ -3,6 +3,8 @@ require 'pedicel/base'
 module Pedicel
   class EC < Base
     def ephemeral_public_key
+      @token[:header].transform_keys!(&:to_sym)
+
       Base64.decode64(@token[:header][:ephemeralPublicKey])
     end
 
