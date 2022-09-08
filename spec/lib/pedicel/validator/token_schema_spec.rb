@@ -39,7 +39,7 @@ describe 'Pedicel::Validator::TokenSchema' do
   context 'signature' do
     it 'errs when invalid' do
       token_h[:signature] = 'invalid signature'
-      is_expected.to dissatisfy_schema(ts, signature: nil)
+      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64', 'must be a PKCS7 Signature'])
     end
 
     it 'errs when missing' do
@@ -54,14 +54,14 @@ describe 'Pedicel::Validator::TokenSchema' do
 
     it 'errs when not a Base64 string' do
       token_h[:signature] = 'not Base64'
-      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ts, signature: ['must be Base64', 'must be a PKCS7 Signature'])
     end
   end
 
   context 'version' do
     it 'errs when invalid' do
       token_h[:version] = 'invalid version'
-      is_expected.to dissatisfy_schema(ts, version: nil)
+      is_expected.to dissatisfy_schema(ts, version: ['must be one of: EC_v1, RSA_v1'])
     end
 
     it 'errs when missing' do
@@ -98,7 +98,13 @@ describe 'Pedicel::Validator::TokenSchema' do
     it 'errs when data is missing and signature is wrong' do
       token_h.delete(:data)
       token_h[:signature] = 'invalid signature'
-      is_expected.to dissatisfy_schema(ts, data: ['is missing'], signature: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ts, data: ['is missing'], signature: ['must be Base64', 'must be a PKCS7 Signature'])
+    end
+  end
+  context 'paymentData' do
+    it 'should fail on string' do
+      token_h[:header] = 'wrong data type'
+      is_expected.to dissatisfy_schema(ts, header: ['must be a hash'])
     end
   end
 end
