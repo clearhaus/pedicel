@@ -22,7 +22,8 @@ describe 'Pedicel::Validator' do
   end
 
   it 'formats a bunch of errors as expected' do
-    invalid_data = valid_data.merge(currencyCode: '34')
+    # since https://github.com/clearhaus/issues-pci/issues/3415 a currencyCode of '34' technically legal
+    invalid_data = valid_data.merge(currencyCode: 'A34')
     invalid_data[:deviceManufacturerIdentifier] = 'g'
     invalid_data[:paymentData][:eciIndicator] = ''
 
