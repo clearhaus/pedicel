@@ -66,7 +66,7 @@ describe 'Pedicel::Validator::TokenDataSchema' do
     end
 
     it 'errs when currencyCode is not a currency code' do
-      %w[11 11A 1111].each do |invalid_value|
+      %w[A11 11A 1111].each do |invalid_value|
         token_data_h[:currencyCode] = invalid_value
         is_expected.to dissatisfy_schema(tds, currencyCode: ['must be an ISO 4217 numeric code'])
       end

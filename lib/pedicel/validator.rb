@@ -102,7 +102,7 @@ module Pedicel
 
     Dry::Validation.register_macro(:is_iso4217_numeric) do
       if key?
-        unless  /\A[0-9]{3}\z/.match?(value)
+        unless  /\A[0-9]{3}\z/.match?(value.rjust(3, "0"))
           key.failure(CUSTOM_ERRORS[:is_iso4217_numeric])
         end
       end
