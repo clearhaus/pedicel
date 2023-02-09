@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.files = Dir.glob("lib/**/*.rb")
 
   s.add_runtime_dependency 'dry-validation', '1.8'
-  s.add_runtime_dependency 'dry-schema', '~> 1.9'
+  s.add_runtime_dependency 'dry-schema', '1.10.6'
   s.add_runtime_dependency 'dry-logic', '~> 1.0'
 
   s.required_ruby_version = '~> 2.7.4'
