@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'dry-schema', '~> 1.9'
   s.add_runtime_dependency 'dry-logic', '~> 1.0'
 
-  s.required_ruby_version = '>= 2.7.4', '<= 3.2'
+  s.required_ruby_version = '>= 2.7.4'
 
   # s.add_development_dependency 'pedicel-pay'
   s.add_development_dependency 'pry', '~> 0.0'
