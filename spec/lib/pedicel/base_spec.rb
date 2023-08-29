@@ -233,8 +233,7 @@ describe 'Pedicel::Base' do
 
       it 'handles that one certificate can be both intermediate and leaf' do
         def create_special_certificate(ca_key, ca_certificate, config, oids)
-          key = OpenSSL::PKey::EC.new(PedicelPay::EC_CURVE)
-          key.generate_key
+          key = OpenSSL::PKey::EC.generate(PedicelPay::EC_CURVE)
 
           cert = OpenSSL::X509::Certificate.new
           # https://www.ietf.org/rfc/rfc5280.txt -> Section 4.1, search for "v3(2)".
@@ -242,7 +241,7 @@ describe 'Pedicel::Base' do
           cert.serial = 1
           cert.subject = config[:subject][:intermediate]
           cert.issuer = ca_certificate.subject
-          cert.public_key = PedicelPay::Helper.ec_key_to_pkey_public_key(key)
+          cert.public_key = key # PedicelPay::Helper.ec_key_to_pkey_public_key(key)
           cert.not_before = config[:valid].min
           cert.not_after = config[:valid].max
 
