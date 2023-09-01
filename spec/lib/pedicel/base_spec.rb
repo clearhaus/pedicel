@@ -241,7 +241,7 @@ describe 'Pedicel::Base' do
           cert.serial = 1
           cert.subject = config[:subject][:intermediate]
           cert.issuer = ca_certificate.subject
-          cert.public_key = key # PedicelPay::Helper.ec_key_to_pkey_public_key(key)
+          cert.public_key = key
           cert.not_before = config[:valid].min
           cert.not_after = config[:valid].max
 
