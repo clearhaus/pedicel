@@ -105,37 +105,37 @@ describe 'Pedicel::Base' do
       subject { lambda { pedicel.verify_signature } }
 
       it 'does not err when all checks are good' do
-        is_expected.to_not raise_error
+        expect { subject.call }.to_not raise_error
       end
 
       it 'checks for the custom OIDs (1.a)' do
         expect(Pedicel::Base).to receive(:extract_certificates).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks that the root certificate is trusted (1.b)' do
         expect(Pedicel::Base).to receive(:verify_root_certificate).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks the chain (1.c)' do
         expect(Pedicel::Base).to receive(:verify_x509_chain).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it "checks the token's signature (1.d)" do
         expect(pedicel).to receive(:validate_signature).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks signing time (1.e)' do
         expect(Pedicel::Base).to receive(:verify_signed_time).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
     end
 
@@ -197,26 +197,26 @@ describe 'Pedicel::Base' do
       end
 
       it 'does not err when all checks are good' do
-        is_expected.to_not raise_error
+        expect { subject.call }.to_not raise_error
       end
 
       it 'errs if there is no leaf OID' do
         pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*leaf.*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*leaf.*found/)
       end
 
       it 'errs if there is no intermediate OID' do
         pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*intermediate.*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*intermediate.*found/)
       end
 
       it 'errs if there are neither a leaf nor an intermediate OID' do
         pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
         pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*(leaf|intermediate).*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*(leaf|intermediate).*found/)
       end
     end
 
