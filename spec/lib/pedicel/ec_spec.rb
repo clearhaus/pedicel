@@ -180,8 +180,7 @@ describe 'Pedicel::EC' do
     end
 
     it "errs if the private key is from another curve than the token's ephemeral public key" do
-      key = OpenSSL::PKey::EC.new('wap-wsg-idm-ecid-wtls1') # Apple, do never switch to this curve.
-      key.generate_key
+      key = OpenSSL::PKey::EC.generate('wap-wsg-idm-ecid-wtls1') # Apple, do never switch to this curve.
 
       expect{pedicel.shared_secret(private_key: key)}.to raise_error(Pedicel::EcKeyError, /curve.*differ/)
     end

@@ -105,37 +105,37 @@ describe 'Pedicel::Base' do
       subject { lambda { pedicel.verify_signature } }
 
       it 'does not err when all checks are good' do
-        is_expected.to_not raise_error
+        expect { subject.call }.to_not raise_error
       end
 
       it 'checks for the custom OIDs (1.a)' do
         expect(Pedicel::Base).to receive(:extract_certificates).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks that the root certificate is trusted (1.b)' do
         expect(Pedicel::Base).to receive(:verify_root_certificate).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks the chain (1.c)' do
         expect(Pedicel::Base).to receive(:verify_x509_chain).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it "checks the token's signature (1.d)" do
         expect(pedicel).to receive(:validate_signature).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
 
       it 'checks signing time (1.e)' do
         expect(Pedicel::Base).to receive(:verify_signed_time).and_raise(Pedicel::SignatureError, 'boom')
 
-        is_expected.to raise_error(Pedicel::SignatureError, 'boom')
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, 'boom')
       end
     end
 
@@ -197,26 +197,26 @@ describe 'Pedicel::Base' do
       end
 
       it 'does not err when all checks are good' do
-        is_expected.to_not raise_error
+        expect { subject.call }.to_not raise_error
       end
 
       it 'errs if there is no leaf OID' do
         pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*leaf.*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*leaf.*found/)
       end
 
       it 'errs if there is no intermediate OID' do
         pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*intermediate.*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*intermediate.*found/)
       end
 
       it 'errs if there are neither a leaf nor an intermediate OID' do
         pedicel.config.merge!(oid_leaf_certificate: 'invalid oid')
         pedicel.config.merge!(oid_intermediate_certificate: 'invalid oid')
 
-        is_expected.to raise_error(Pedicel::SignatureError, /no.*(leaf|intermediate).*found/)
+        expect { subject.call }.to raise_error(Pedicel::SignatureError, /no.*(leaf|intermediate).*found/)
       end
     end
 
@@ -233,8 +233,7 @@ describe 'Pedicel::Base' do
 
       it 'handles that one certificate can be both intermediate and leaf' do
         def create_special_certificate(ca_key, ca_certificate, config, oids)
-          key = OpenSSL::PKey::EC.new(PedicelPay::EC_CURVE)
-          key.generate_key
+          key = OpenSSL::PKey::EC.generate(PedicelPay::EC_CURVE)
 
           cert = OpenSSL::X509::Certificate.new
           # https://www.ietf.org/rfc/rfc5280.txt -> Section 4.1, search for "v3(2)".
@@ -242,7 +241,7 @@ describe 'Pedicel::Base' do
           cert.serial = 1
           cert.subject = config[:subject][:intermediate]
           cert.issuer = ca_certificate.subject
-          cert.public_key = PedicelPay::Helper.ec_key_to_pkey_public_key(key)
+          cert.public_key = key
           cert.not_before = config[:valid].min
           cert.not_after = config[:valid].max
 
@@ -356,81 +355,81 @@ describe 'Pedicel::Base' do
     end
 
     it 'does not err when the chain is good' do
-      expect{Pedicel::Base.verify_x509_chain(params)}.to_not raise_error
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to_not raise_error
     end
 
     context 'intermediate equals leaf' do
       it 'errs if intermediate = leaf (because root did not sign leaf)' do
         params[:intermediate] = params[:leaf]
-        expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
+        expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
       end
 
       it 'errs even if intermediate = leaf is self-signed' do
         params[:intermediate] = params[:leaf] = PedicelPay::Backend.generate.ca_certificate
-        expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
+        expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
       end
     end
 
     context 'leaf equals intermediate' do
       it 'errs if leaf = intermediate (because intermediate did not sign leaf)' do
         params[:leaf] = params[:intermediate]
-        expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+        expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
       end
 
       it 'errs even if leaf = intermediate is self-signed' do
         params[:leaf] = params[:intermediate] = PedicelPay::Backend.generate.ca_certificate
-        expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
+        expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
       end
     end
 
     it 'errs if intermediate equals root (because root did not sign leaf)' do
       params[:intermediate] = params[:root]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
     end
 
     it 'errs if root equals intermediate (because intermediate is not self-signed)' do
       params[:root] = params[:intermediate]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
     end
 
     it 'errs if leaf equals root (because intermediate did not sign leaf)' do
       params[:leaf] = params[:root]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
     end
 
     it 'errs if root equals leaf (becuase leaf is not self-signed)' do
       params[:root] = params[:leaf]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
     end
 
     it 'errs if leaf is used for all 3 certificates (because of multiple reasons)' do
       params[:root]         = params[:leaf]
       params[:intermediate] = params[:leaf]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
     end
 
     it 'errs if intermediate is used for all 3 certificates' do
       params[:root] = params[:intermediate]
       params[:leaf] = params[:intermediate]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to root')
     end
 
     it 'does not err when root is used for all 3 certificates' do
       params[:intermediate] = params[:root]
       params[:leaf]         = params[:root]
-      expect{Pedicel::Base.verify_x509_chain(params)}.to_not raise_error
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to_not raise_error
     end
 
     it 'errs if intermediate is not signed by root' do
       params[:root] = PedicelPay::Backend.generate.ca_certificate
 
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
     end
 
     it 'errs if leaf is not signed by intermediate (1)' do
       params[:leaf] = PedicelPay::Backend.generate.leaf_certificate
 
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
     end
 
     it 'errs if leaf is not signed by intermediate (2)' do
@@ -438,34 +437,33 @@ describe 'Pedicel::Base' do
       params[:root]         = another_backend.ca_certificate
       params[:intermediate] = another_backend.intermediate_certificate
 
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
     end
 
     it 'errs if leaf is not signed by intermediate and intermediate is not signed by root' do
       params[:root]         = PedicelPay::Backend.generate.ca_certificate
       params[:intermediate] = PedicelPay::Backend.generate.intermediate_certificate
 
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to intermediate')
     end
 
     it 'errs if certs are interchanged' do
       params.keys.permutation.reject{|ks| ks == params.keys}.each do |permutated_keys|
         permutated_params = permutated_keys.zip(params.values).to_h
 
-        expect{Pedicel::Base.verify_x509_chain(permutated_params)}.to raise_error(Pedicel::SignatureError, /\Ainvalid chain due to (root|intermediate|leaf)\z/)
+        expect{Pedicel::Base.verify_x509_chain(**permutated_params)}.to raise_error(Pedicel::SignatureError, /\Ainvalid chain due to (root|intermediate|leaf)\z/)
       end
     end
 
     it 'errs even if the leaf is self-signed' do
       params[:leaf] = PedicelPay::Backend.generate.ca_certificate
-      expect{Pedicel::Base.verify_x509_chain(params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
+      expect{Pedicel::Base.verify_x509_chain(**params)}.to raise_error(Pedicel::SignatureError, 'invalid chain due to leaf')
     end
 
     it 'is true when the chain is good' do
-      expect(Pedicel::Base.verify_x509_chain(params)).to be true
+      expect(Pedicel::Base.verify_x509_chain(**params)).to be true
     end
   end
-
 
   describe 'Pedicel::Base.verify_signed_time' do
     let (:signature) { OpenSSL::PKCS7.new(pedicel.signature) }
