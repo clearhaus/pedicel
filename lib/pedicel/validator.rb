@@ -305,16 +305,6 @@ module Pedicel
 
         @validation.errors.to_h.sort
       end
-
-      def errors_formatted(node = [errors])
-        node.pop.flat_map do |key, value|
-          if value.is_a?(Array)
-            value.map { |error| "#{(node + [key]).join('.')} #{error}" }
-          else
-            errors_formatted(node + [key, value])
-          end
-        end
-      end
     end
 
     class Token
