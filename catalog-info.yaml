@@ -1,0 +1,16 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: pedicel
+  description: Apple Pay token handler/decrypter
+  tags:
+    - confidentiality:public
+    - integrity:integrity-and-authenticity-critical
+    - availability:real-time-critical
+    - pci-dss:yes
+spec:
+  type: library
+  lifecycle: production
+  owner: AEP
+  system: clearhaus
