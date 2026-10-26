@@ -1,3 +1,3 @@
 module Pedicel
-  VERSION = '0.0.5'.freeze
+  VERSION = '1.2.0'.freeze
 end

@@ -31,14 +31,14 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
 
     it 'errs when not a hex string' do
       header_h[:applicationData] = 'not hex'
-      is_expected.to dissatisfy_schema(ths, applicationData: ['must be hex'])
+      is_expected.to dissatisfy_schema(ths, applicationData: ['must be hex', 'must be a hex-encoded SHA-256'])
     end
   end
 
   context 'ephemeralPublicKey' do
     it 'errs when invalid' do
       header_h[:ephemeralPublicKey] = 'invalid ephemeralPublicKey'
-      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: nil)
+      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['must be Base64', 'must be an EC public key'])
     end
     it 'errs when not a string' do
       header_h[:ephemeralPublicKey] = 123
@@ -47,7 +47,7 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
 
     it 'errs when not Base64' do
       header_h[:ephemeralPublicKey] = '%'
-      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['must be Base64', 'must be an EC public key'])
     end
 
     it 'errs when invalid EC public key' do
@@ -64,7 +64,7 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
 
     it 'errs when not Base64' do
       header_h[:wrappedKey] = 'invalid wrappedKey'
-      is_expected.to dissatisfy_schema(ths, wrappedKey: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ths, {wrappedKey: ['must be Base64'], :ephemeralPublicKey=>['ephemeralPublicKey xor wrappedKey']})
     end
   end
 
@@ -72,13 +72,13 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
     it 'errs when both are present' do
       header_h[:ephemeralPublicKey] = valid_ec_public_key
       header_h[:wrappedKey] = 'validBase64='
-      is_expected.to dissatisfy_schema(ths, 'ephemeralPublicKey xor wrappedKey': ['must be filled'])
+      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['ephemeralPublicKey xor wrappedKey'])
     end
 
     it 'errs when neither are present' do
       header_h.delete(:ephemeralPublicKey)
       header_h.delete(:wrappedKey)
-      is_expected.to dissatisfy_schema(ths, 'ephemeralPublicKey xor wrappedKey': ['must be filled'])
+      is_expected.to dissatisfy_schema(ths, ephemeralPublicKey: ['ephemeralPublicKey xor wrappedKey'])
     end
 
     it 'does not err when only ephemeralPublicKey is present' do
@@ -107,7 +107,7 @@ describe 'Pedicel::Validator::TokenHeaderSchema' do
 
     it 'errs when not Base64' do
       header_h[:publicKeyHash] = '%'
-      is_expected.to dissatisfy_schema(ths, publicKeyHash: ['must be Base64'])
+      is_expected.to dissatisfy_schema(ths, publicKeyHash: ['must be Base64', 'must be a Base64-encoded SHA-256'])
     end
 
     it 'errs when invalid' do

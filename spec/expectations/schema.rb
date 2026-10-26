@@ -8,8 +8,9 @@ RSpec::Matchers.define :satisfy_schema do |expected|
 
   failure_message do |actual|
     <<~EOM
+      #{actual}
       expected that the given hash satisfy the schema, but:
-        #{@check.messages}
+        #{@check.errors.to_h}
     EOM
   end
 end
@@ -19,32 +20,21 @@ RSpec::Matchers.define :dissatisfy_schema do |expected, mismatches|
     check = expected.call(actual)
 
     @mismatches = mismatches
-    @errors = check.errors
+
+    @errors = check.errors.to_h
 
     return false if check.success?
 
     return true unless mismatches
 
-    return false unless check.errors.keys.sort == mismatches.keys.sort
+    return false unless @errors.keys.include? mismatches.keys.first
 
-    check.errors.sort.zip(mismatches.sort).each do |error, mismatch|
-      # Check key
-      return false unless error.first == mismatch.first
+    @errors.values.each do |error|
+      return false unless mismatches.values.include? error
+    end
 
-      # Check messages
-      next unless mismatch.last.is_a?(Array)
-      return false if error.last.length > mismatch.last.length
-
-      error.last.zip(mismatch.last).each do |error_message, mismatch_message|
-        case mismatch_message
-        when String
-          return false unless error_message == mismatch_message
-        when Regexp
-          return false unless error_message =~ mismatch_message
-        else
-          fail "unknown match type for '#{mismatch_message}'"
-        end
-      end
+    mismatches.values.each do |mismatch|
+      return false unless @errors.values.include? mismatch
     end
 
     true
