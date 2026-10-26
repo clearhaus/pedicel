@@ -14,6 +14,8 @@ Gem::Specification.new do |s|
 
   s.files = Dir.glob("lib/**/*.rb")
 
+  s.add_runtime_dependency 'base64', '~> 0.2'
+  s.add_runtime_dependency 'bigdecimal', '~> 3.1'
   s.add_runtime_dependency 'dry-validation', '~> 1.9'
   s.add_runtime_dependency 'dry-core', '1.0.0'
   s.add_runtime_dependency 'dry-schema', '~> 1.9'
