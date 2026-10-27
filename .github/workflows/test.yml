@@ -4,7 +4,19 @@ on:
   - pull_request
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 2.7–3.1 have no builds for ubuntu-latest (26.04).
+          - { ruby: '2.7', os: ubuntu-22.04 }
+          - { ruby: '3.0', os: ubuntu-22.04 }
+          - { ruby: '3.1', os: ubuntu-22.04 }
+          - { ruby: '3.2', os: ubuntu-latest }
+          - { ruby: '3.3', os: ubuntu-latest }
+          - { ruby: '3.4', os: ubuntu-latest }
+          - { ruby: '4.0', os: ubuntu-latest }
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
@@ -12,6 +24,6 @@ jobs:
     - name: Run tests
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ruby
+        ruby-version: ${{ matrix.ruby }}
         bundler-cache: true
     - run: bundle exec rake test
