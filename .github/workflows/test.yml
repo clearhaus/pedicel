@@ -4,6 +4,7 @@ on:
   - pull_request
 jobs:
   test:
+    name: test (${{ matrix.ruby }})
     strategy:
       fail-fast: false
       matrix:
