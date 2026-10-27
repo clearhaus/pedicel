@@ -14,6 +14,9 @@ Gem::Specification.new do |s|
 
   s.files = Dir.glob("lib/**/*.rb")
 
+  s.add_runtime_dependency 'base64', '~> 0.2'
+  s.add_runtime_dependency 'bigdecimal', '~> 3.1'
+  s.add_runtime_dependency 'logger', '~> 1.6'
   s.add_runtime_dependency 'dry-validation', '~> 1.9'
   s.add_runtime_dependency 'dry-core', '1.0.0'
   s.add_runtime_dependency 'dry-schema', '~> 1.9'
@@ -21,6 +24,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = '>= 2.7.4'
 
+  s.add_development_dependency 'ostruct', '~> 0.6'
   s.add_development_dependency 'pedicel-pay', '~> 0.0.8'
   s.add_development_dependency 'pry', '~> 0.0'
   s.add_development_dependency 'rake', '~> 12.3'
